@@ -1,1 +1,80 @@
-# fmcg_mobile_app
+# FMCG Mobile Suite (React Native Expo 54 + expo-sqlite)
+
+A full-featured mobile counterpart to the FMCG Desktop ERP system, designed for distributors, wholesalers, and retail operators. Built with **React Native Expo 54**, **expo-sqlite**, **TypeScript**, and **React Navigation 7**.
+
+---
+
+## 🚀 Key Features
+
+### 1. Multi-Business / Firm Profiles
+- Manage multiple firms/branches independently with unique GSTINs, state codes, bank credentials, custom invoice prefixes, logos, and signatures.
+- Quick business switcher in the top navigation bar.
+- Individual invoice sequences, customizable terms, and FY start settings.
+
+### 2. Packaging Conversion Ladder & Multi-Tier Units
+- Define hierarchical packaging units (e.g., `Carton` (2400) → `Box` (120) → `Pack` (10) → `Piece` (1)).
+- Factor mathematics for automatic base quantity conversion and stock decrementing.
+- Unit-specific purchase & sale pricing with integrated barcode lookups.
+
+### 3. FEFO Batch & Serial Number Tracking
+- First-Expiry, First-Out (FEFO) batch inventory with Mfg & Expiry dates, lot costs, and MRP.
+- Real-time stock status flags: Active, Expiring Soon (30 days), Expired, and Low Stock.
+- Serial number tracking with lifecycle states (`in_stock`, `sold`) and two-way invoice traceability.
+
+### 4. Billing & Vouchers
+- **Voucher Types**: Sales Invoices, Purchase Invoices, Quotations/Estimates, Credit Notes, Debit Notes.
+- **3-Tier Discounts**: Trade Discount, Cash Discount (CD), and Special Discount (SD) in % or flat ₹ amounts.
+- **GST Calculation Engine**: Automated Intra-state (CGST + SGST) vs. Inter-state (IGST) split based on party GSTIN state code, Cess rates, Reverse charge, and Round-off.
+- **FMCG Dispatch Details**: E-Way Bill No., Consignee details, Place of supply, PO/Order Ref, Transporter & vehicle details.
+- **1-Tap Quotation to Sale Conversion**.
+- **7 Professional Bill Templates**: Classic, Vyapar, Marg, Miracle, Tally, Busy, Modern with custom theme palettes.
+- **PDF Export, AirPrint & Direct WhatsApp Dispatch**.
+
+### 5. Parties & Ledger
+- Customers and Suppliers directory with GSTIN state code validation.
+- Real-time opening balance, outstanding receivables/payables, and invoice/payment transaction ledgers.
+- 1-tap WhatsApp payment reminder dispatch.
+
+### 6. Payments
+- **Payment In (Receipts)** and **Payment Out (Vouchers)** with Cash, UPI, Bank Transfer, and Cheque modes.
+- Automatic invoice status reconciliation (`paid`, `partial`, `unpaid`).
+
+### 7. E-Way Bills
+- E-Way bill generation linked to invoices with transport mode (Road/Rail/Air/Ship), distance, and vehicle type.
+- Preview printable E-Way slips and export NIC-compliant JSON payloads.
+
+### 8. Enterprise Reports
+- **Sales & Purchase Registers** with date range filters, GST breakdowns, and CSV export.
+- **GST & HSN Table 12 Summary** with B2B, B2CL, B2CS classifications and GSTR-1 JSON export.
+- **Outstanding Receivables & Payables** with aging analysis.
+- **Financial Year Balance Sheet** (Turnover, Purchases, Gross Margin, Stock Valuation).
+- **Serial & Batch Traceability Audit Trail**.
+
+### 9. Administration & Settings
+- Multi-user access control (Admin & Staff) with granular permissions.
+- F12 Global feature toggles (Batches, Serials, Multi-Unit, E-Way, POS quick billing, Round-off).
+- 8 Theme Palettes (Teal, Indigo, Emerald, Amber, Rose, Violet, Cyan, Slate) and Dark/Light Mode.
+- Complete Backup & Restore (JSON database snapshots).
+- CSV Data Migration for items and parties with sample template downloads.
+- Desktop Sync and shortcut reference.
+
+---
+
+## 📱 Navigation & Keyboard Architecture
+
+- **Dashboard**: Quick metrics, sales trends, top products, low stock / expiry alerts.
+- **Billing (F2)**: Fast invoice generation and listing with status filtering.
+- **Inventory (F6)**: Multi-level categories, items, packaging ladders, FEFO batches, serial lookup.
+- **Parties (F9)**: Customer and supplier management and ledgers.
+- **Hub & More**: Reports, E-Way bills, Businesses, Staff users, Settings, Backup/Restore.
+
+---
+
+## 🛠 Tech Stack
+
+- **Framework**: React Native Expo 54
+- **Database Engine**: `expo-sqlite` (WAL mode enabled, foreign keys enabled)
+- **Navigation**: `@react-navigation/native-stack` & `@react-navigation/bottom-tabs` (v7)
+- **Styling**: Context-based dynamic theming with 8 palettes and dark mode
+- **Document & Print**: `expo-print`, `expo-sharing`, `expo-file-system`
+- **Language**: 100% Strict TypeScript

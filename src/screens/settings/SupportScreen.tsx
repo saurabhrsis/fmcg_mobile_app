@@ -1,0 +1,138 @@
+import React from 'react';
+import { View, Text, StyleSheet, ScrollView, Linking } from 'react-native';
+import { useTheme } from '../../context/ThemeContext';
+import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
+import { Card } from '../../components/common/Card';
+import { Badge } from '../../components/common/Badge';
+import { Button } from '../../components/common/Button';
+import { Ionicons } from '@expo/vector-icons';
+
+export const SupportScreen: React.FC = () => {
+  const { colors } = useTheme();
+
+  const shortcuts = [
+    { key: 'F2', desc: 'New Sales Voucher' },
+    { key: 'F3', desc: 'New Purchase Voucher' },
+    { key: 'F4', desc: 'Receipts & Payments' },
+    { key: 'F6', desc: 'Product Master Catalogue' },
+    { key: 'F7', desc: 'Batch Inventory & Expiry' },
+    { key: 'F9', desc: 'Customers & Suppliers' },
+    { key: 'F10', desc: 'Reports & GSTR-1' },
+    { key: 'F11', desc: 'System Settings' },
+    { key: 'F12', desc: 'Feature Flags & Toggles' },
+  ];
+
+  return (
+    <ScreenWrapper>
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text style={[styles.title, { color: colors.text }]}>Help & System License</Text>
+        <Text style={{ fontSize: 11, color: colors.textMuted, marginBottom: 12 }}>
+          Product info, developer support & desktop shortcuts
+        </Text>
+
+        {/* License Status Card */}
+        <Card>
+          <View style={styles.licTop}>
+            <View>
+              <Text style={[styles.licTitle, { color: colors.text }]}>RightServe FMCG Mobile Edition</Text>
+              <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>Version 1.0.0 (Expo 54 Offline SQLite)</Text>
+            </View>
+            <Badge label="Active Perpetual" variant="success" />
+          </View>
+
+          <View style={[styles.licInfoBox, { backgroundColor: colors.surfaceSubtle }]}>
+            <Text style={{ fontSize: 12, color: colors.text }}>
+              Developed by: <Text style={{ fontWeight: '700' }}>RightServe Infotech System & LivePro Solutions</Text>
+            </Text>
+            <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 4 }}>
+              Offline-first ERP with complete parity to the Desktop Edition.
+            </Text>
+          </View>
+        </Card>
+
+        {/* Keyboard / Desktop Shortcuts */}
+        <Card>
+          <Text style={[styles.sectionHeading, { color: colors.text }]}>Desktop & Hotkey Shortcuts</Text>
+          <Text style={{ fontSize: 11, color: colors.textMuted, marginBottom: 8 }}>
+            Corresponds to the desktop edition navigation keys:
+          </Text>
+
+          <View style={styles.shortcutGrid}>
+            {shortcuts.map((s, idx) => (
+              <View key={idx} style={[styles.shortcutRow, { borderBottomColor: colors.border }]}>
+                <Badge label={s.key} variant="primary" />
+                <Text style={[styles.shortcutDesc, { color: colors.text }]}>{s.desc}</Text>
+              </View>
+            ))}
+          </View>
+        </Card>
+
+        {/* Support Contact Card */}
+        <Card>
+          <Text style={[styles.sectionHeading, { color: colors.text }]}>Developer & Customer Support</Text>
+          <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 12 }}>
+            Have questions or need assistance with custom deployment?
+          </Text>
+
+          <View style={{ gap: 8 }}>
+            <Button
+              title="Email: support@StockVeda.com"
+              icon="mail-outline"
+              variant="secondary"
+              onPress={() => Linking.openURL('mailto:support@StockVeda.com')}
+            />
+            <Button
+              title="Call: +91 86693 08888 / +91 94044 84560"
+              icon="call-outline"
+              variant="outline"
+              onPress={() => Linking.openURL('tel:+918669308888')}
+            />
+          </View>
+        </Card>
+      </ScrollView>
+    </ScreenWrapper>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    padding: 16,
+    paddingBottom: 60,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  licTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  licTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  licInfoBox: {
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  sectionHeading: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  shortcutGrid: {
+    gap: 4,
+  },
+  shortcutRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+  },
+  shortcutDesc: {
+    fontSize: 13,
+  },
+});
