@@ -224,9 +224,12 @@ export const printService = {
 <body>
   <div class="bill-container">
     <div class="header-band">
-      <div>
-        <h1>${title}</h1>
-        <div style="font-size: 11px; opacity: 0.9;">${biz.bill_declaration || 'Original For Recipient'}</div>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        ${biz.logo ? `<img src="${biz.logo}" style="height: 52px; max-width: 120px; object-fit: contain; background: #ffffff; border-radius: 6px; padding: 3px;" />` : ''}
+        <div>
+          <h1>${title}</h1>
+          <div style="font-size: 11px; opacity: 0.9;">Original For Recipient</div>
+        </div>
       </div>
       <div style="text-align: right;">
         <div class="inv-no"># ${inv.invoice_no}</div>
@@ -255,13 +258,36 @@ export const printService = {
     </div>
 
     ${
-      inv.eway_no || inv.po_no || inv.consignee_name || inv.dispatched_through
+      inv.consignee_name || inv.consignee_address || inv.consignee_gstin
+        ? `
+    <div class="info-card" style="margin-top: 8px;">
+      <div class="label" style="font-size: 10px; text-transform: uppercase;">Consignee (Ship To):</div>
+      <div class="name">${inv.consignee_name || inv.party_name || ''}</div>
+      ${inv.consignee_address ? `<div>${inv.consignee_address}</div>` : ''}
+      ${inv.consignee_gstin ? `<div><span class="label">GSTIN:</span> <strong>${inv.consignee_gstin}</strong>${inv.consignee_state ? ` (State: ${inv.consignee_state})` : ''}</div>` : inv.consignee_state ? `<div><span class="label">State:</span> ${inv.consignee_state}</div>` : ''}
+    </div>
+    `
+        : ''
+    }
+
+    ${
+      inv.eway_no || inv.po_no || inv.other_ref || inv.pay_terms || inv.dispatched_through ||
+      inv.delivery_note || inv.dispatch_doc || inv.destination || inv.terms_delivery ||
+      inv.no_of_packets || inv.irn
         ? `
     <div class="meta-bar">
+      ${inv.po_no ? `<div class="meta-item"><span class="meta-label">Buyer's Order No & Date</span><span class="meta-val">${inv.po_no} ${inv.po_date ? `(${formatDate(inv.po_date)})` : ''}</span></div>` : ''}
+      ${inv.other_ref ? `<div class="meta-item"><span class="meta-label">Reference No & Date</span><span class="meta-val">${inv.other_ref}</span></div>` : ''}
+      ${inv.pay_terms ? `<div class="meta-item"><span class="meta-label">Mode/Terms of Payment</span><span class="meta-val">${inv.pay_terms}</span></div>` : ''}
       ${inv.eway_no ? `<div class="meta-item"><span class="meta-label">E-Way Bill</span><span class="meta-val">${inv.eway_no}</span></div>` : ''}
-      ${inv.po_no ? `<div class="meta-item"><span class="meta-label">PO No & Date</span><span class="meta-val">${inv.po_no} ${inv.po_date ? `(${formatDate(inv.po_date)})` : ''}</span></div>` : ''}
-      ${inv.consignee_name ? `<div class="meta-item"><span class="meta-label">Ship To</span><span class="meta-val">${inv.consignee_name}</span></div>` : ''}
-      ${inv.dispatched_through ? `<div class="meta-item"><span class="meta-label">Dispatched Via</span><span class="meta-val">${inv.dispatched_through}</span></div>` : ''}
+      ${inv.delivery_note ? `<div class="meta-item"><span class="meta-label">Delivery Note</span><span class="meta-val">${inv.delivery_note} ${inv.delivery_note_date ? `(${formatDate(inv.delivery_note_date)})` : ''}</span></div>` : ''}
+      ${inv.dispatch_doc ? `<div class="meta-item"><span class="meta-label">Dispatch Doc No</span><span class="meta-val">${inv.dispatch_doc}</span></div>` : ''}
+      ${inv.dispatched_through ? `<div class="meta-item"><span class="meta-label">Dispatched Through</span><span class="meta-val">${inv.dispatched_through}</span></div>` : ''}
+      ${inv.destination ? `<div class="meta-item"><span class="meta-label">Destination</span><span class="meta-val">${inv.destination}</span></div>` : ''}
+      ${inv.terms_delivery ? `<div class="meta-item"><span class="meta-label">Terms of Delivery</span><span class="meta-val">${inv.terms_delivery}</span></div>` : ''}
+      ${inv.no_of_packets ? `<div class="meta-item"><span class="meta-label">No. of Packets</span><span class="meta-val">${inv.no_of_packets}</span></div>` : ''}
+      ${inv.irn ? `<div class="meta-item"><span class="meta-label">e-Invoice IRN</span><span class="meta-val" style="word-break: break-all;">${inv.irn}</span></div>` : ''}
+      ${inv.ack_no ? `<div class="meta-item"><span class="meta-label">Ack No & Date</span><span class="meta-val">${inv.ack_no} ${inv.ack_date ? `(${formatDate(inv.ack_date)})` : ''}</span></div>` : ''}
     </div>
     `
         : ''
@@ -289,13 +315,20 @@ export const printService = {
     <div class="summary-section">
       <div>
         <div class="bank-terms-box">
-          <div style="font-weight: 700; margin-bottom: 4px; color: #0f172a;">Bank & Payment Info:</div>
-          ${biz.bank_name ? `<div>Bank: <strong>${biz.bank_name}</strong> | A/C: <strong>${biz.bank_account}</strong></div>` : ''}
-          ${biz.bank_ifsc ? `<div>IFSC: <strong>${biz.bank_ifsc}</strong> | Branch: ${biz.bank_branch || ''}</div>` : ''}
-          ${biz.upi_id ? `<div>UPI ID: <strong>${biz.upi_id}</strong></div>` : ''}
-          
+          <div style="display: flex; gap: 10px; align-items: flex-start;">
+            <div style="flex: 1;">
+              <div style="font-weight: 700; margin-bottom: 4px; color: #0f172a;">Bank & Payment Info:</div>
+              ${biz.bank_name ? `<div>Bank: <strong>${biz.bank_name}</strong> | A/C: <strong>${biz.bank_account}</strong></div>` : ''}
+              ${biz.bank_ifsc ? `<div>IFSC: <strong>${biz.bank_ifsc}</strong> | Branch: ${biz.bank_branch || ''}</div>` : ''}
+              ${biz.account_holder ? `<div>A/C Holder: <strong>${biz.account_holder}</strong></div>` : ''}
+              ${biz.upi_id ? `<div>UPI ID: <strong>${biz.upi_id}</strong></div>` : ''}
+            </div>
+            ${biz.qr_image ? `<div style="text-align: center;"><img src="${biz.qr_image}" style="width: 76px; height: 76px; object-fit: contain;" /><div style="font-size: 9px; color: #64748b;">Scan to Pay</div></div>` : ''}
+          </div>
+
           <div style="font-weight: 700; margin-top: 8px; margin-bottom: 2px;">${biz.bill_terms_heading || 'Terms & Conditions'}:</div>
           <div>${biz.terms || '1. Goods once sold will not be taken back.'}</div>
+          ${biz.bill_declaration ? `<div style="margin-top: 6px; font-style: italic; color: #64748b;"><strong>Declaration:</strong> ${biz.bill_declaration}</div>` : ''}
         </div>
 
         <div style="margin-top: 10px;">
@@ -389,12 +422,13 @@ export const printService = {
     </div>
 
     <div class="footer-sign">
-      <div style="font-size: 10px; color: #64748b;">
-        ${biz.bill_footer_note || 'Thank you for your business!'}
+      <div style="font-size: 10px; color: #64748b; display: flex; align-items: flex-end; gap: 12px;">
+        ${biz.stamp ? `<img src="${biz.stamp}" style="height: 64px; max-width: 90px; object-fit: contain; opacity: 0.9;" />` : ''}
+        <span>${biz.bill_footer_note || 'Thank you for your business!'}</span>
       </div>
       <div class="sign-box">
         <div>For <strong>${biz.name}</strong></div>
-        <div class="sign-line">${biz.bill_signatory || 'Authorised Signatory'}</div>
+        ${biz.signature ? `<img src="${biz.signature}" style="height: 44px; max-width: 150px; object-fit: contain; margin-top: 6px;" /><div style="border-top: 1px solid #64748b; padding-top: 4px; font-weight: 600;">${biz.bill_signatory || 'Authorised Signatory'}</div>` : `<div class="sign-line">${biz.bill_signatory || 'Authorised Signatory'}</div>`}
       </div>
     </div>
   </div>
@@ -405,6 +439,64 @@ export const printService = {
 
   async printInvoice(biz: Business, inv: Invoice): Promise<void> {
     const html = this.generateInvoiceHtml(biz, inv);
+    await Print.printAsync({ html });
+  },
+
+  /**
+   * Opens a print preview of a SAMPLE invoice rendered with the given business
+   * settings (format, colours, branding images, invoice texts). Used by the
+   * business form so users can see the bill design before saving.
+   */
+  async previewBillFormat(biz: Business): Promise<void> {
+    const today = new Date().toISOString().slice(0, 10);
+    const sampleItems: any[] = [
+      {
+        item_name: 'Parle-G Biscuits 800g', batch_no: 'B-PGB-1', hsn: '1905',
+        qty: 10, unit: 'Box', price: 85, gst_rate: 18,
+        taxable: 850, tax_amount: 153, line_total: 1003,
+      },
+      {
+        item_name: 'Shampoo 200ml', batch_no: 'B-SHM-2', hsn: '3305',
+        qty: 6, unit: 'Bottle', price: 130, gst_rate: 18,
+        taxable: 780, tax_amount: 140.4, line_total: 920.4,
+      },
+      {
+        item_name: 'Cooking Oil 1L', hsn: '1512',
+        qty: 4, unit: 'PCS', price: 160, gst_rate: 5,
+        taxable: 640, tax_amount: 32, line_total: 672,
+      },
+    ];
+    const sampleInv: Invoice = {
+      id: 0,
+      invoice_no: `${biz.invoice_prefix || 'INV'}-0001`,
+      type: 'sale',
+      business_id: biz.id || 0,
+      party_id: null,
+      party_name: 'Sunrise Supermarket (Sample)',
+      party_address: '45 Bazar Street, Sample City',
+      party_phone: '9812345678',
+      party_gstin: '27AAACS1234A1Z5',
+      party_state: 'Maharashtra',
+      date: today,
+      subtotal: 2270,
+      discount: 0,
+      tax_total: 325.4,
+      total: 2595.4,
+      round_off: 0,
+      paid: 1000,
+      status: 'partial' as any,
+      notes: '',
+      note_kind: '' as any,
+      consignee_name: 'Sunrise Warehouse',
+      consignee_address: 'Plot 12, MIDC Area, Sample City',
+      po_no: 'PO-4521',
+      po_date: today,
+      dispatched_through: 'Road Transport',
+      destination: 'Sample City',
+      created_at: today,
+      items: sampleItems,
+    };
+    const html = this.generateInvoiceHtml(biz, sampleInv);
     await Print.printAsync({ html });
   },
 

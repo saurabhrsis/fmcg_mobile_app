@@ -17,7 +17,8 @@ import { partyService } from '../../services/partyService';
 import { batchService } from '../../services/batchService';
 import { invoiceService } from '../../services/invoiceService';
 import { serialService } from '../../services/serialService';
-import { Item, Party, InvoiceItem, InvoiceType, NoteKind, Batch, ItemUnit } from '../../types';
+import { businessService } from '../../services/businessService';
+import { Item, Party, InvoiceItem, InvoiceType, NoteKind, Batch, ItemUnit, CompanyFeatures } from '../../types';
 import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
@@ -50,10 +51,39 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
   const [extraDiscount, setExtraDiscount] = useState('0');
   const [paidAmount, setPaidAmount] = useState('0');
   const [notes, setNotes] = useState('');
-  const [poNo, setPoNo] = useState('');
-  const [ewayNo, setEwayNo] = useState('');
+
+  // Optional tax-invoice details (Ship-to, dispatch, order refs, e-Invoice…)
+  // Grouped in a collapsible section like the desktop edition. Nothing is mandatory.
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [companyFeatures, setCompanyFeatures] = useState<CompanyFeatures>({});
+
+  // Consignee (Ship To)
   const [consigneeName, setConsigneeName] = useState('');
+  const [consigneeGstin, setConsigneeGstin] = useState('');
+  const [consigneeAddress, setConsigneeAddress] = useState('');
+  const [consigneeState, setConsigneeState] = useState('');
   const [placeOfSupply, setPlaceOfSupply] = useState('');
+
+  // Order & References
+  const [poNo, setPoNo] = useState('');
+  const [poDate, setPoDate] = useState('');
+  const [otherRef, setOtherRef] = useState('');
+  const [ewayNo, setEwayNo] = useState('');
+  const [payTerms, setPayTerms] = useState('');
+
+  // Dispatch / Transport
+  const [deliveryNote, setDeliveryNote] = useState('');
+  const [deliveryNoteDate, setDeliveryNoteDate] = useState('');
+  const [dispatchDoc, setDispatchDoc] = useState('');
+  const [dispatchedThrough, setDispatchedThrough] = useState('');
+  const [destination, setDestination] = useState('');
+  const [termsDelivery, setTermsDelivery] = useState('');
+  const [noOfPackets, setNoOfPackets] = useState('');
+
+  // e-Invoice (IRN)
+  const [irn, setIrn] = useState('');
+  const [ackNo, setAckNo] = useState('');
+  const [ackDate, setAckDate] = useState('');
 
   // Modals
   const [partyModal, setPartyModal] = useState(false);
@@ -90,6 +120,10 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
 
       const allItems = await itemService.getAllItems(activeBusiness.id);
       setItemsList(allItems);
+
+      // Which optional bill-detail groups are enabled (Feature Config screen).
+      const feats = await businessService.getCompanyFeatures();
+      setCompanyFeatures(feats);
     })();
   }, [activeBusiness, type, noteKind]);
 
@@ -186,10 +220,26 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
           discount: extraDiscNum,
           paid: Number(paidAmount) || 0,
           notes,
-          po_no: poNo,
-          eway_no: ewayNo,
           consignee_name: consigneeName,
+          consignee_gstin: consigneeGstin,
+          consignee_address: consigneeAddress,
+          consignee_state: consigneeState,
           place_of_supply: placeOfSupply,
+          po_no: poNo,
+          po_date: poDate,
+          other_ref: otherRef,
+          eway_no: ewayNo,
+          pay_terms: payTerms,
+          delivery_note: deliveryNote,
+          delivery_note_date: deliveryNoteDate,
+          dispatch_doc: dispatchDoc,
+          dispatched_through: dispatchedThrough,
+          destination,
+          terms_delivery: termsDelivery,
+          no_of_packets: noOfPackets,
+          irn,
+          ack_no: ackNo,
+          ack_date: ackDate,
         },
         lineItems,
         false,
@@ -208,6 +258,22 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
       setLoading(false);
     }
   };
+
+  // Feature toggles default ON when not configured (same as desktop).
+  const featOn = (k: keyof CompanyFeatures) =>
+    (companyFeatures as any)[k] === undefined ? true : !!(companyFeatures as any)[k];
+  const showConsignee = featOn('billConsignee');
+  const showOrderRef = featOn('billOrderRef');
+  const showDispatch = featOn('billDispatch');
+  const showEInvoice = featOn('billEInvoice');
+  const anyDetailGroup = showConsignee || showOrderRef || showDispatch || showEInvoice;
+
+  const detailFilledCount = [
+    consigneeName, consigneeGstin, consigneeAddress, consigneeState, placeOfSupply,
+    poNo, poDate, otherRef, ewayNo, payTerms,
+    deliveryNote, deliveryNoteDate, dispatchDoc, dispatchedThrough, destination, termsDelivery, noOfPackets,
+    irn, ackNo, ackDate,
+  ].filter((v) => v && String(v).trim()).length;
 
   return (
     <ScreenWrapper>
@@ -357,7 +423,7 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
           )}
         </Card>
 
-        {/* Notes & Optional Details Accordion */}
+        {/* Notes */}
         <Card>
           <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 10 }]}>Additional Information</Text>
           <Input
@@ -366,23 +432,119 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
             onChangeText={setNotes}
             placeholder="Optional remarks on bill..."
           />
-          <View style={styles.grid2}>
-            <Input
-              label="PO Number"
-              value={poNo}
-              onChangeText={setPoNo}
-              placeholder="e.g. PO-890"
-              containerStyle={{ flex: 1 }}
-            />
-            <Input
-              label="E-Way Bill No"
-              value={ewayNo}
-              onChangeText={setEwayNo}
-              placeholder="e.g. 121345678901"
-              containerStyle={{ flex: 1 }}
-            />
-          </View>
         </Card>
+
+        {/* Invoice Details — Ship To, Order Refs, Dispatch/Transport, e-Invoice */}
+        {anyDetailGroup && (
+          <Card>
+            <TouchableOpacity
+              style={styles.detailsToggle}
+              onPress={() => setDetailsOpen(!detailsOpen)}
+              activeOpacity={0.7}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                <Ionicons
+                  name={detailsOpen ? 'chevron-down' : 'chevron-forward'}
+                  size={18}
+                  color={colors.palette.primary}
+                />
+                <View style={{ marginLeft: 6, flex: 1 }}>
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>Invoice Details</Text>
+                  <Text style={{ fontSize: 11, color: colors.textMuted }}>
+                    Optional · Ship To, Dispatch, Order Refs, e-Way, e-Invoice
+                  </Text>
+                </View>
+              </View>
+              {detailFilledCount > 0 && (
+                <Badge label={`${detailFilledCount} filled`} variant="success" />
+              )}
+            </TouchableOpacity>
+
+            {detailsOpen && (
+              <View style={{ marginTop: 12 }}>
+                {/* Consignee (Ship To) */}
+                {showConsignee && (
+                  <View style={[styles.detailGroup, { borderColor: colors.border }]}>
+                    <View style={styles.detailGroupHead}>
+                      <Ionicons name="location-outline" size={15} color={colors.palette.primary} />
+                      <Text style={[styles.detailGroupTitle, { color: colors.text }]}>Consignee (Ship To)</Text>
+                      <Text style={{ fontSize: 10, color: colors.textMuted }}>leave blank to use the customer</Text>
+                    </View>
+                    <View style={styles.grid2}>
+                      <Input label="Name" value={consigneeName} onChangeText={setConsigneeName} containerStyle={{ flex: 1 }} />
+                      <Input label="GSTIN" value={consigneeGstin} onChangeText={setConsigneeGstin} autoCapitalize="characters" maxLength={15} containerStyle={{ flex: 1 }} />
+                    </View>
+                    <Input label="Address" value={consigneeAddress} onChangeText={setConsigneeAddress} />
+                    <View style={styles.grid2}>
+                      <Input label="State" value={consigneeState} onChangeText={setConsigneeState} containerStyle={{ flex: 1 }} />
+                      <Input label="Place of Supply" value={placeOfSupply} onChangeText={setPlaceOfSupply} containerStyle={{ flex: 1 }} />
+                    </View>
+                  </View>
+                )}
+
+                {/* Order & References */}
+                {showOrderRef && (
+                  <View style={[styles.detailGroup, { borderColor: colors.border }]}>
+                    <View style={styles.detailGroupHead}>
+                      <Ionicons name="document-text-outline" size={15} color={colors.palette.primary} />
+                      <Text style={[styles.detailGroupTitle, { color: colors.text }]}>Order & References</Text>
+                    </View>
+                    <View style={styles.grid2}>
+                      <Input label="Buyer's Order No." value={poNo} onChangeText={setPoNo} placeholder="e.g. PO-890" containerStyle={{ flex: 1 }} />
+                      <Input label="Order Date (YYYY-MM-DD)" value={poDate} onChangeText={setPoDate} placeholder="2026-09-01" containerStyle={{ flex: 1 }} />
+                    </View>
+                    <View style={styles.grid2}>
+                      <Input label="Reference No. & Date" value={otherRef} onChangeText={setOtherRef} containerStyle={{ flex: 1 }} />
+                      <Input label="e-Way Bill No." value={ewayNo} onChangeText={setEwayNo} placeholder="12-digit EWB" keyboardType="numeric" containerStyle={{ flex: 1 }} />
+                    </View>
+                    <Input label="Mode / Terms of Payment" value={payTerms} onChangeText={setPayTerms} placeholder="e.g. 30 Days Credit / Immediate" />
+                  </View>
+                )}
+
+                {/* Dispatch / Transport */}
+                {showDispatch && (
+                  <View style={[styles.detailGroup, { borderColor: colors.border }]}>
+                    <View style={styles.detailGroupHead}>
+                      <Ionicons name="car-outline" size={15} color={colors.palette.primary} />
+                      <Text style={[styles.detailGroupTitle, { color: colors.text }]}>Dispatch / Transport</Text>
+                    </View>
+                    <View style={styles.grid2}>
+                      <Input label="Delivery Note" value={deliveryNote} onChangeText={setDeliveryNote} containerStyle={{ flex: 1 }} />
+                      <Input label="Delivery Note Date" value={deliveryNoteDate} onChangeText={setDeliveryNoteDate} placeholder="YYYY-MM-DD" containerStyle={{ flex: 1 }} />
+                    </View>
+                    <View style={styles.grid2}>
+                      <Input label="Dispatch Doc No." value={dispatchDoc} onChangeText={setDispatchDoc} containerStyle={{ flex: 1 }} />
+                      <Input label="Dispatched Through" value={dispatchedThrough} onChangeText={setDispatchedThrough} placeholder="e.g. Road / Courier" containerStyle={{ flex: 1 }} />
+                    </View>
+                    <View style={styles.grid2}>
+                      <Input label="Destination" value={destination} onChangeText={setDestination} containerStyle={{ flex: 1 }} />
+                      <Input label="Terms of Delivery" value={termsDelivery} onChangeText={setTermsDelivery} containerStyle={{ flex: 1 }} />
+                    </View>
+                    {featOn('billPackets') && (
+                      <Input label="No. of Packets" value={noOfPackets} onChangeText={setNoOfPackets} keyboardType="numeric" placeholder="e.g. 12" />
+                    )}
+                  </View>
+                )}
+
+                {/* e-Invoice (IRN) */}
+                {showEInvoice && (
+                  <View style={[styles.detailGroup, { borderColor: colors.border }]}>
+                    <View style={styles.detailGroupHead}>
+                      <Ionicons name="link-outline" size={15} color={colors.palette.primary} />
+                      <Text style={[styles.detailGroupTitle, { color: colors.text }]}>e-Invoice (IRN)</Text>
+                      <Text style={{ fontSize: 10, color: colors.textMuted }}>enter after generating on GST portal</Text>
+                    </View>
+                    <Input label="IRN" value={irn} onChangeText={setIrn} autoCapitalize="none" />
+                    <View style={styles.grid2}>
+                      <Input label="Ack No." value={ackNo} onChangeText={setAckNo} containerStyle={{ flex: 1 }} />
+                      <Input label="Ack Date" value={ackDate} onChangeText={setAckDate} placeholder="YYYY-MM-DD" containerStyle={{ flex: 1 }} />
+                    </View>
+                  </View>
+                )}
+              </View>
+            )}
+          </Card>
+        )}
 
         {/* Save Button */}
         <Button
@@ -647,6 +809,27 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 15,
+    fontWeight: '700',
+  },
+  detailsToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  detailGroup: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
+  },
+  detailGroupHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  detailGroupTitle: {
+    fontSize: 13,
     fontWeight: '700',
   },
   emptyItemsBox: {

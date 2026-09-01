@@ -10,24 +10,12 @@ import { Ionicons } from '@expo/vector-icons';
 export const SupportScreen: React.FC = () => {
   const { colors } = useTheme();
 
-  const shortcuts = [
-    { key: 'F2', desc: 'New Sales Voucher' },
-    { key: 'F3', desc: 'New Purchase Voucher' },
-    { key: 'F4', desc: 'Receipts & Payments' },
-    { key: 'F6', desc: 'Product Master Catalogue' },
-    { key: 'F7', desc: 'Batch Inventory & Expiry' },
-    { key: 'F9', desc: 'Customers & Suppliers' },
-    { key: 'F10', desc: 'Reports & GSTR-1' },
-    { key: 'F11', desc: 'System Settings' },
-    { key: 'F12', desc: 'Feature Flags & Toggles' },
-  ];
-
   return (
     <ScreenWrapper>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={[styles.title, { color: colors.text }]}>Help & System License</Text>
         <Text style={{ fontSize: 11, color: colors.textMuted, marginBottom: 12 }}>
-          Product info, developer support & desktop shortcuts
+          Product info, license & developer support
         </Text>
 
         {/* License Status Card */}
@@ -47,23 +35,6 @@ export const SupportScreen: React.FC = () => {
             <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 4 }}>
               Offline-first ERP with complete parity to the Desktop Edition.
             </Text>
-          </View>
-        </Card>
-
-        {/* Keyboard / Desktop Shortcuts */}
-        <Card>
-          <Text style={[styles.sectionHeading, { color: colors.text }]}>Desktop & Hotkey Shortcuts</Text>
-          <Text style={{ fontSize: 11, color: colors.textMuted, marginBottom: 8 }}>
-            Corresponds to the desktop edition navigation keys:
-          </Text>
-
-          <View style={styles.shortcutGrid}>
-            {shortcuts.map((s, idx) => (
-              <View key={idx} style={[styles.shortcutRow, { borderBottomColor: colors.border }]}>
-                <Badge label={s.key} variant="primary" />
-                <Text style={[styles.shortcutDesc, { color: colors.text }]}>{s.desc}</Text>
-              </View>
-            ))}
           </View>
         </Card>
 
@@ -121,18 +92,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     marginBottom: 6,
-  },
-  shortcutGrid: {
-    gap: 4,
-  },
-  shortcutRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 6,
-    borderBottomWidth: 1,
-  },
-  shortcutDesc: {
-    fontSize: 13,
   },
 });

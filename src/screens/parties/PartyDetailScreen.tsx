@@ -157,10 +157,7 @@ export const PartyDetailScreen: React.FC<{ navigation: any; route: any }> = ({
             title={party?.type === 'supplier' ? '+ Purchase' : '+ New Sale'}
             icon="cart"
             onPress={() =>
-              navigation.navigate('Billing', {
-                screen: 'CreateInvoice',
-                params: { type: party?.type === 'supplier' ? 'purchase' : 'sale' },
-              })
+              navigation.navigate('CreateInvoice', { type: party?.type === 'supplier' ? 'purchase' : 'sale' })
             }
             style={{ flex: 1 }}
           />
@@ -169,10 +166,7 @@ export const PartyDetailScreen: React.FC<{ navigation: any; route: any }> = ({
             icon="cash"
             variant="secondary"
             onPress={() =>
-              navigation.navigate('Payments', {
-                screen: 'CreatePayment',
-                params: { partyId: party?.id, type: party?.type === 'supplier' ? 'out' : 'in' },
-              })
+              navigation.navigate('CreatePayment', { partyId: party?.id, type: party?.type === 'supplier' ? 'out' : 'in' })
             }
             style={{ flex: 1 }}
           />
@@ -190,7 +184,7 @@ export const PartyDetailScreen: React.FC<{ navigation: any; route: any }> = ({
                 styles.historyRow,
                 { borderBottomColor: idx === (party?.invoices?.length || 0) - 1 ? 'transparent' : colors.border },
               ]}
-              onPress={() => navigation.navigate('Billing', { screen: 'InvoiceDetail', params: { id: inv.id } })}
+              onPress={() => navigation.navigate('InvoiceDetail', { id: inv.id })}
             >
               <View style={{ flex: 1 }}>
                 <Text style={[styles.historyNo, { color: colors.palette.primary }]}>{inv.invoice_no}</Text>

@@ -65,3 +65,11 @@ export async function runTransaction<T>(callback: (txDb: SQLite.SQLiteDatabase) 
   });
   return result as T;
 }
+
+export async function seedDatabase() {
+  const db = await getDatabase();
+  await seedInitialData(
+    (sql, params) => db.runAsync(sql, ...(params || [])),
+    (sql, params) => db.getFirstAsync(sql, ...(params || []))
+  );
+}

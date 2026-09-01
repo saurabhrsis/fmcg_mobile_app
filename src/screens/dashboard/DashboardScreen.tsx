@@ -77,7 +77,7 @@ export const DashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =
           </View>
           <TouchableOpacity
             style={[styles.bellBtn, { backgroundColor: colors.surfaceSubtle }]}
-            onPress={() => navigation.navigate('Inventory', { screen: 'BatchStock' })}
+            onPress={() => navigation.navigate('BatchStock')}
           >
             <Ionicons name="notifications-outline" size={20} color={colors.text} />
             {((metrics?.lowStockCount || 0) > 0 || (metrics?.expSoonCount || 0) > 0) && (
@@ -91,10 +91,7 @@ export const DashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =
           <TouchableOpacity
             style={[styles.actionChip, { backgroundColor: colors.palette.primary }]}
             onPress={() =>
-              navigation.navigate('Billing', {
-                screen: 'CreateInvoice',
-                params: { type: 'sale' },
-              })
+              navigation.navigate('CreateInvoice', { type: 'sale' })
             }
           >
             <Ionicons name="cart" size={18} color="#ffffff" style={{ marginRight: 6 }} />
@@ -104,10 +101,7 @@ export const DashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =
           <TouchableOpacity
             style={[styles.actionChip, { backgroundColor: colors.palette.accent }]}
             onPress={() =>
-              navigation.navigate('Billing', {
-                screen: 'CreateInvoice',
-                params: { type: 'purchase' },
-              })
+              navigation.navigate('CreateInvoice', { type: 'purchase' })
             }
           >
             <Ionicons name="bag-add" size={18} color="#ffffff" style={{ marginRight: 6 }} />
@@ -116,7 +110,7 @@ export const DashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =
 
           <TouchableOpacity
             style={[styles.actionChip, { backgroundColor: colors.surfaceSubtle }]}
-            onPress={() => navigation.navigate('Payments', { screen: 'CreatePayment' })}
+            onPress={() => navigation.navigate('CreatePayment')}
           >
             <Ionicons name="cash-outline" size={18} color={colors.text} style={{ marginRight: 6 }} />
             <Text style={[styles.actionChipText, { color: colors.text }]}>+ Payment</Text>
@@ -130,14 +124,14 @@ export const DashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =
             value={formatCurrency(metrics?.todaySales || 0)}
             icon="cash"
             color={colors.palette.primary}
-            onPress={() => navigation.navigate('Billing', { screen: 'InvoiceList', params: { type: 'sale' } })}
+            onPress={() => navigation.navigate('InvoiceList', { type: 'sale' })}
           />
           <StatCard
             title="Month Sales"
             value={formatCurrency(metrics?.monthSales || 0)}
             icon="trending-up"
             color={colors.palette.success}
-            onPress={() => navigation.navigate('Billing', { screen: 'InvoiceList', params: { type: 'sale' } })}
+            onPress={() => navigation.navigate('InvoiceList', { type: 'sale' })}
           />
         </View>
 
@@ -148,7 +142,7 @@ export const DashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =
             subtitle="To Collect"
             icon="arrow-down-circle"
             color={colors.palette.primary}
-            onPress={() => navigation.navigate('Parties', { screen: 'PartyList', params: { type: 'customer' } })}
+            onPress={() => navigation.navigate('PartyList', { type: 'customer' })}
           />
           <StatCard
             title="Payables"
@@ -156,7 +150,7 @@ export const DashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =
             subtitle="To Pay"
             icon="arrow-up-circle"
             color={colors.palette.danger}
-            onPress={() => navigation.navigate('Parties', { screen: 'PartyList', params: { type: 'supplier' } })}
+            onPress={() => navigation.navigate('PartyList', { type: 'supplier' })}
           />
         </View>
 
@@ -166,7 +160,7 @@ export const DashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =
             value={formatCurrency(metrics?.monthPurchase || 0)}
             icon="basket"
             color={colors.palette.warning}
-            onPress={() => navigation.navigate('Billing', { screen: 'InvoiceList', params: { type: 'purchase' } })}
+            onPress={() => navigation.navigate('InvoiceList', { type: 'purchase' })}
           />
           <StatCard
             title="Stock Value"
@@ -174,7 +168,7 @@ export const DashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =
             subtitle={`${metrics?.itemCount || 0} Items`}
             icon="cube"
             color={colors.palette.accent}
-            onPress={() => navigation.navigate('Inventory', { screen: 'ItemList' })}
+            onPress={() => navigation.navigate('ItemList')}
           />
         </View>
 
@@ -237,7 +231,7 @@ export const DashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =
                   title="View"
                   size="sm"
                   variant="outline"
-                  onPress={() => navigation.navigate('Inventory', { screen: 'ItemList' })}
+                  onPress={() => navigation.navigate('ItemList')}
                 />
               </View>
             )}
@@ -259,7 +253,7 @@ export const DashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =
                   title="View"
                   size="sm"
                   variant="outline"
-                  onPress={() => navigation.navigate('Inventory', { screen: 'BatchStock' })}
+                  onPress={() => navigation.navigate('BatchStock')}
                 />
               </View>
             )}

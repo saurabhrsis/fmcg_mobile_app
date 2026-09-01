@@ -176,7 +176,7 @@ export const OutstandingReportScreen: React.FC<{ navigation: any }> = ({ navigat
 
               <View style={[styles.cardActions, { borderTopColor: colors.border }]}>
                 <TouchableOpacity
-                  onPress={() => navigation.navigate('Parties', { screen: 'PartyDetail', params: { id: item.id } })}
+                  onPress={() => navigation.navigate('PartyDetail', { id: item.id })}
                   style={styles.actionBtn}
                 >
                   <Ionicons name="document-text-outline" size={14} color={colors.text} style={{ marginRight: 4 }} />

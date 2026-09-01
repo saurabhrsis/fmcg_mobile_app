@@ -14,7 +14,8 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
-import { seedDatabase } from '../../db/seed';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { seedDatabase } from '../../db/database';
 
 export const LoginScreen: React.FC = () => {
   const { login, checkSetupStatus } = useAuth();
@@ -58,11 +59,12 @@ export const LoginScreen: React.FC = () => {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header Branding */}
         <View style={styles.header}>
           <View style={[styles.iconCircle, { backgroundColor: colors.palette.primary }]}>
@@ -204,7 +206,8 @@ export const LoginScreen: React.FC = () => {
           </Text>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
