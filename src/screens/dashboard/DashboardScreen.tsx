@@ -11,6 +11,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useBusiness } from '../../context/BusinessContext';
 import { useAuth } from '../../context/AuthContext';
 import { reportService } from '../../services/reportService';
+import { notificationService } from '../../services/notificationService';
 import { DashboardMetrics } from '../../types';
 import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
 import { StatCard } from '../../components/common/StatCard';
@@ -28,12 +29,17 @@ export const DashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =
 
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [hasUnreadNotifs, setHasUnreadNotifs] = useState(false);
 
   const loadMetrics = async () => {
     if (!activeBusiness) return;
     try {
       const data = await reportService.getDashboardMetrics(activeBusiness.id);
       setMetrics(data);
+      // Bell dot: only when there are alerts the user hasn't opened yet.
+      // Read state is persisted offline in the local SQLite settings.
+      const unread = await notificationService.hasUnread(activeBusiness.id);
+      setHasUnreadNotifs(unread);
     } catch (e) {
       console.error('Failed to load dashboard metrics:', e);
     }
@@ -77,10 +83,15 @@ export const DashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =
           </View>
           <TouchableOpacity
             style={[styles.bellBtn, { backgroundColor: colors.surfaceSubtle }]}
-            onPress={() => navigation.navigate('BatchStock')}
+            onPress={() => {
+              // Opening the notification centre marks alerts as read there,
+              // so the dot is gone when the user comes back.
+              setHasUnreadNotifs(false);
+              navigation.navigate('Notifications');
+            }}
           >
             <Ionicons name="notifications-outline" size={20} color={colors.text} />
-            {((metrics?.lowStockCount || 0) > 0 || (metrics?.expSoonCount || 0) > 0) && (
+            {hasUnreadNotifs && (
               <View style={[styles.badgeDot, { backgroundColor: colors.palette.danger }]} />
             )}
           </TouchableOpacity>

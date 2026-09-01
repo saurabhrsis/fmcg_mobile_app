@@ -2,6 +2,9 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TabNavigator } from './TabNavigator';
 
+// Notifications
+import { NotificationsScreen } from '../screens/notifications/NotificationsScreen';
+
 // Billing
 import { CreateInvoiceScreen } from '../screens/billing/CreateInvoiceScreen';
 import { InvoiceDetailScreen } from '../screens/billing/InvoiceDetailScreen';
@@ -59,6 +62,9 @@ export const AppNavigator: React.FC = () => {
   return (
     <Stack.Navigator id="AppStack" screenOptions={{ headerShown: false }}>
       <Stack.Screen name="MainTabs" component={TabNavigator} />
+
+      {/* Notifications */}
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
 
       {/* Billing */}
       <Stack.Screen name="CreateInvoice" component={CreateInvoiceScreen} />
