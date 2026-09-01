@@ -25,6 +25,19 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
       // Initialize schema
       await db.execAsync(SCHEMA_SQL);
 
+      // Additive migrations for installs created before new columns existed.
+      // SQLite has no "ADD COLUMN IF NOT EXISTS", so ignore duplicate errors.
+      const migrations = [
+        "ALTER TABLE invoices ADD COLUMN gst_type TEXT DEFAULT 'auto'",
+      ];
+      for (const sql of migrations) {
+        try {
+          await db.execAsync(sql);
+        } catch (_) {
+          // Column already exists — nothing to do.
+        }
+      }
+
       // Seed initial demo data
       await seedInitialData(
         (sql, params) => db.runAsync(sql, ...(params || [])),

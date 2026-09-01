@@ -212,6 +212,7 @@ CREATE TABLE IF NOT EXISTS invoices (
   ack_date TEXT DEFAULT '',
   no_of_packets TEXT DEFAULT '',
   supplier_inv_no TEXT DEFAULT '',
+  gst_type TEXT DEFAULT 'auto',
   created_by INTEGER REFERENCES users(id),
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

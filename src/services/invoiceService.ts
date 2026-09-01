@@ -218,14 +218,14 @@ export const invoiceService = {
         valid_until, consignee_name, consignee_address, consignee_gstin, consignee_state,
         place_of_supply, eway_no, pay_terms, po_no, po_date, other_ref, dispatch_doc,
         delivery_note, delivery_note_date, dispatched_through, destination, terms_delivery,
-        irn, ack_no, ack_date, no_of_packets, supplier_inv_no, created_by
+        irn, ack_no, ack_date, no_of_packets, supplier_inv_no, gst_type, created_by
       ) VALUES (
         ?, ?, ?, ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?, ?
+        ?, ?, ?, ?, ?, ?, ?
       )`,
       [
         invNo,
@@ -266,6 +266,7 @@ export const invoiceService = {
         data.ack_date || '',
         data.no_of_packets || '',
         data.supplier_inv_no || '',
+        data.gst_type || 'auto',
         userId || null,
       ]
     );
@@ -466,6 +467,7 @@ export const invoiceService = {
         consignee_gstin: quote.consignee_gstin,
         consignee_state: quote.consignee_state,
         place_of_supply: quote.place_of_supply,
+        gst_type: quote.gst_type || 'auto',
         discount: quote.discount,
       },
       quote.items || [],

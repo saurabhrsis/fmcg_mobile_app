@@ -118,6 +118,14 @@ export function posStateCode(inv?: any): string {
 }
 
 export function isInterState(biz?: any, inv?: any): boolean {
+  // Per-invoice override: SEZ / deemed-export supplies (e.g. MIHAN Nagpur SEZ
+  // units) charge IGST even when both parties are in the same state. The
+  // voucher can force 'inter' (IGST) or 'intra' (CGST+SGST); 'auto' / empty
+  // falls through to the normal state-code comparison below.
+  const forced = String((inv && inv.gst_type) || '').trim().toLowerCase();
+  if (forced === 'inter' || forced === 'igst') return true;
+  if (forced === 'intra' || forced === 'cgst_sgst') return false;
+
   const home = homeStateCode(biz);
   const other = posStateCode(inv);
   if (home && other) return home !== other;

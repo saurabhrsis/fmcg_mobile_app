@@ -59,11 +59,17 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
   const [companyFeatures, setCompanyFeatures] = useState<CompanyFeatures>({});
 
   // Consignee (Ship To)
+  const [shipToSame, setShipToSame] = useState(false); // ship-to = customer address
   const [consigneeName, setConsigneeName] = useState('');
   const [consigneeGstin, setConsigneeGstin] = useState('');
   const [consigneeAddress, setConsigneeAddress] = useState('');
   const [consigneeState, setConsigneeState] = useState('');
   const [placeOfSupply, setPlaceOfSupply] = useState('');
+
+  // GST tax type — 'auto' follows the state comparison (intra → CGST+SGST,
+  // inter → IGST). SEZ units (e.g. MIHAN Nagpur) can force IGST even when the
+  // customer & company are in the same state; 'intra' forces CGST+SGST.
+  const [gstType, setGstType] = useState<'auto' | 'intra' | 'inter'>('auto');
 
   // Order & References
   const [poNo, setPoNo] = useState('');
@@ -154,6 +160,17 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
   const extraDiscNum = Number(extraDiscount) || 0;
   const grandTotal = Math.max(0, round2(totalGross - extraDiscNum));
 
+  // What would 'Auto' resolve to for the current party / ship-to / place of
+  // supply? Used for the chip hint and the CGST/SGST vs IGST breakdown.
+  const autoInter = isInterState(activeBusiness, {
+    party_state: selectedParty?.state,
+    party_gstin: selectedParty?.gstin,
+    place_of_supply: placeOfSupply,
+    consignee_state: shipToSame ? '' : consigneeState,
+    consignee_gstin: shipToSame ? '' : consigneeGstin,
+  });
+  const effectiveInter = gstType === 'inter' ? true : gstType === 'intra' ? false : autoInter;
+
   const handleSelectProduct = async (product: Item) => {
     setProductModal(false);
     const units = await itemService.getItemUnits(product.id);
@@ -221,6 +238,21 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
 
     setLoading(true);
     try {
+      // Ship To = customer's own address when the checkbox is ticked.
+      const shipTo = shipToSame && selectedParty
+        ? {
+            consignee_name: selectedParty.name,
+            consignee_gstin: selectedParty.gstin || '',
+            consignee_address: selectedParty.address || '',
+            consignee_state: selectedParty.state || '',
+          }
+        : {
+            consignee_name: consigneeName,
+            consignee_gstin: consigneeGstin,
+            consignee_address: consigneeAddress,
+            consignee_state: consigneeState,
+          };
+
       const inv = await invoiceService.createInvoice(
         activeBusiness!.id,
         {
@@ -232,11 +264,9 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
           discount: extraDiscNum,
           paid: Number(paidAmount) || 0,
           notes,
-          consignee_name: consigneeName,
-          consignee_gstin: consigneeGstin,
-          consignee_address: consigneeAddress,
-          consignee_state: consigneeState,
+          ...shipTo,
           place_of_supply: placeOfSupply,
+          gst_type: gstType,
           po_no: poNo,
           po_date: poDate,
           other_ref: otherRef,
@@ -281,7 +311,9 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
   const anyDetailGroup = showConsignee || showOrderRef || showDispatch || showEInvoice;
 
   const detailFilledCount = [
-    consigneeName, consigneeGstin, consigneeAddress, consigneeState, placeOfSupply,
+    shipToSame ? 'same-as-customer' : '',
+    ...(shipToSame ? [] : [consigneeName, consigneeGstin, consigneeAddress, consigneeState]),
+    placeOfSupply,
     poNo, poDate, otherRef, ewayNo, payTerms,
     deliveryNote, deliveryNoteDate, dispatchDoc, dispatchedThrough, destination, termsDelivery, noOfPackets,
     irn, ackNo, ackDate,
@@ -391,6 +423,42 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
             </View>
             <Ionicons name="search" size={20} color={colors.palette.primary} />
           </TouchableOpacity>
+
+          {/* GST Tax Type — Auto / CGST+SGST / IGST (SEZ override) */}
+          <Text style={[styles.inputLabel, { color: colors.text, marginTop: 12 }]}>GST Tax Type</Text>
+          <View style={styles.gstTypeRow}>
+            {([
+              { key: 'auto', label: `Auto (${autoInter ? 'IGST' : 'CGST+SGST'})` },
+              { key: 'intra', label: 'CGST + SGST' },
+              { key: 'inter', label: 'IGST' },
+            ] as const).map((opt) => (
+              <TouchableOpacity
+                key={opt.key}
+                style={[
+                  styles.gstTypeChip,
+                  {
+                    backgroundColor: gstType === opt.key ? colors.palette.primary : colors.surfaceSubtle,
+                    borderColor: gstType === opt.key ? colors.palette.primary : colors.border,
+                  },
+                ]}
+                onPress={() => setGstType(opt.key)}
+              >
+                <Text
+                  style={{
+                    color: gstType === opt.key ? '#ffffff' : colors.text,
+                    fontSize: 12,
+                    fontWeight: '700',
+                  }}
+                >
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <Text style={{ fontSize: 10.5, color: colors.textMuted, marginTop: 6 }}>
+            Auto compares customer & company GST states. SEZ / MIHAN units charge IGST even within
+            the same state — select IGST to override.
+          </Text>
         </Card>
 
         {/* Line Items List */}
@@ -453,10 +521,25 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
             <Text style={{ fontWeight: '600', color: colors.text }}>{formatCurrency(subtotal)}</Text>
           </View>
 
-          <View style={styles.summaryRow}>
-            <Text style={{ color: colors.textMuted }}>Total Tax (GST):</Text>
-            <Text style={{ fontWeight: '600', color: colors.text }}>{formatCurrency(taxTotal)}</Text>
-          </View>
+          {effectiveInter ? (
+            <View style={styles.summaryRow}>
+              <Text style={{ color: colors.textMuted }}>
+                IGST{gstType === 'inter' ? ' (forced — SEZ/inter-state)' : ''}:
+              </Text>
+              <Text style={{ fontWeight: '600', color: colors.text }}>{formatCurrency(taxTotal)}</Text>
+            </View>
+          ) : (
+            <>
+              <View style={styles.summaryRow}>
+                <Text style={{ color: colors.textMuted }}>CGST:</Text>
+                <Text style={{ fontWeight: '600', color: colors.text }}>{formatCurrency(taxTotal / 2)}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={{ color: colors.textMuted }}>SGST:</Text>
+                <Text style={{ fontWeight: '600', color: colors.text }}>{formatCurrency(taxTotal / 2)}</Text>
+              </View>
+            </>
+          )}
 
           <View style={styles.summaryRow}>
             <Text style={{ color: colors.textMuted }}>Extra Discount (₹):</Text>
@@ -533,17 +616,60 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
                     <View style={styles.detailGroupHead}>
                       <Ionicons name="location-outline" size={15} color={colors.palette.primary} />
                       <Text style={[styles.detailGroupTitle, { color: colors.text }]}>Consignee (Ship To)</Text>
-                      <Text style={{ fontSize: 10, color: colors.textMuted }}>leave blank to use the customer</Text>
                     </View>
-                    <View style={styles.grid2}>
-                      <Input label="Name" value={consigneeName} onChangeText={setConsigneeName} containerStyle={{ flex: 1 }} />
-                      <Input label="GSTIN" value={consigneeGstin} onChangeText={setConsigneeGstin} autoCapitalize="characters" maxLength={15} containerStyle={{ flex: 1 }} />
-                    </View>
-                    <Input label="Address" value={consigneeAddress} onChangeText={setConsigneeAddress} />
-                    <View style={styles.grid2}>
-                      <Input label="State" value={consigneeState} onChangeText={setConsigneeState} containerStyle={{ flex: 1 }} />
-                      <Input label="Place of Supply" value={placeOfSupply} onChangeText={setPlaceOfSupply} containerStyle={{ flex: 1 }} />
-                    </View>
+
+                    {/* Same-as-customer checkbox */}
+                    <TouchableOpacity
+                      style={styles.checkboxRow}
+                      activeOpacity={0.7}
+                      onPress={() => setShipToSame(!shipToSame)}
+                    >
+                      <Ionicons
+                        name={shipToSame ? 'checkbox' : 'square-outline'}
+                        size={20}
+                        color={shipToSame ? colors.palette.primary : colors.textMuted}
+                      />
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text, flex: 1 }}>
+                        Same as customer (Bill To) address
+                      </Text>
+                    </TouchableOpacity>
+
+                    {shipToSame ? (
+                      <View style={[styles.shipToSameBox, { backgroundColor: colors.surfaceSubtle }]}>
+                        {selectedParty ? (
+                          <>
+                            <Text style={{ fontSize: 12.5, fontWeight: '700', color: colors.text }}>
+                              {selectedParty.name}
+                            </Text>
+                            <Text style={{ fontSize: 11.5, color: colors.textMuted, marginTop: 2 }}>
+                              {selectedParty.address || 'No address on record'}
+                              {selectedParty.state ? ` • ${selectedParty.state}` : ''}
+                            </Text>
+                            {selectedParty.gstin ? (
+                              <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 1 }}>
+                                GSTIN: {selectedParty.gstin}
+                              </Text>
+                            ) : null}
+                          </>
+                        ) : (
+                          <Text style={{ fontSize: 12, color: colors.textMuted }}>
+                            Select a party above — their address will be used as the ship-to address.
+                          </Text>
+                        )}
+                      </View>
+                    ) : (
+                      <>
+                        <View style={styles.grid2}>
+                          <Input label="Name" value={consigneeName} onChangeText={setConsigneeName} containerStyle={{ flex: 1 }} />
+                          <Input label="GSTIN" value={consigneeGstin} onChangeText={setConsigneeGstin} autoCapitalize="characters" maxLength={15} containerStyle={{ flex: 1 }} />
+                        </View>
+                        <Input label="Address" value={consigneeAddress} onChangeText={setConsigneeAddress} />
+                        <View style={styles.grid2}>
+                          <Input label="State" value={consigneeState} onChangeText={setConsigneeState} containerStyle={{ flex: 1 }} />
+                          <Input label="Place of Supply" value={placeOfSupply} onChangeText={setPlaceOfSupply} containerStyle={{ flex: 1 }} />
+                        </View>
+                      </>
+                    )}
                   </View>
                 )}
 
@@ -996,6 +1122,27 @@ const styles = StyleSheet.create({
   detailGroupTitle: {
     fontSize: 13,
     fontWeight: '700',
+  },
+  gstTypeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  gstTypeChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1.5,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  shipToSameBox: {
+    borderRadius: 8,
+    padding: 10,
   },
   emptyItemsBox: {
     borderWidth: 1.5,
