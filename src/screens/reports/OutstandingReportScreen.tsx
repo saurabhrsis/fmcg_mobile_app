@@ -16,6 +16,8 @@ import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
 import { Card } from '../../components/common/Card';
 import { EmptyState } from '../../components/common/EmptyState';
 import { formatCurrency } from '../../utils/formatters';
+import { Button } from '../../components/common/Button';
+import { exportService } from '../../services/exportService';
 import { Ionicons } from '@expo/vector-icons';
 
 export const OutstandingReportScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
@@ -48,6 +50,25 @@ export const OutstandingReportScreen: React.FC<{ navigation: any }> = ({ navigat
     const ok = await whatsappService.sendWhatsApp(p.phone, msg);
     if (!ok) {
       Alert.alert('WhatsApp Error', 'Could not open WhatsApp');
+    }
+  };
+
+
+  const handleExport = async () => {
+    try {
+      const sect = (title: string, list: Party[]) => ({
+        title,
+        subtitle: activeBusiness?.name || '',
+        headers: ['Party', 'Phone', 'State', 'GSTIN', 'Balance'],
+        rows: list.map((pp: any) => [pp.name, pp.phone || '', pp.state || '', pp.gstin || '', pp.balance]),
+        footer: ['TOTAL', '', '', '', list.reduce((sum: number, pp: any) => sum + (pp.balance || 0), 0)],
+      });
+      await exportService.exportCsv('Outstanding_Report', [
+        sect('Receivables (To Collect)', data.receivables),
+        sect('Payables (To Pay)', data.payables),
+      ]);
+    } catch (e: any) {
+      Alert.alert('Export Failed', e.message);
     }
   };
 
@@ -99,6 +120,15 @@ export const OutstandingReportScreen: React.FC<{ navigation: any }> = ({ navigat
             </Text>
           </TouchableOpacity>
         </View>
+
+        <Button
+          title="Export CSV (Both Lists)"
+          icon="download-outline"
+          size="sm"
+          variant="outline"
+          onPress={handleExport}
+          style={{ marginBottom: 10 }}
+        />
 
         {/* Total Outstanding Card */}
         <Card

@@ -384,7 +384,7 @@ export const ItemFormScreen: React.FC<{ navigation: any; route: any }> = ({
         {/* Unit Conversion Ladder */}
         <Card>
           <View style={styles.ladderHeader}>
-            <View>
+            <View style={{ flex: 1, marginRight: 10 }}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
                 Packaging Levels (Multi-Units)
               </Text>
@@ -598,6 +598,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
     marginBottom: 10,
   },
   ladderRow: {

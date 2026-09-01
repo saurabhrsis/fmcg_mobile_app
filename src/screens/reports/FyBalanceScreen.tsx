@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useBusiness } from '../../context/BusinessContext';
 import { reportService } from '../../services/reportService';
@@ -7,6 +7,8 @@ import { FyRange } from '../../utils/fy';
 import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
 import { Card } from '../../components/common/Card';
 import { formatCurrency, formatDate } from '../../utils/formatters';
+import { Button } from '../../components/common/Button';
+import { exportService } from '../../services/exportService';
 
 export const FyBalanceScreen: React.FC = () => {
   const { colors } = useTheme();
@@ -34,6 +36,30 @@ export const FyBalanceScreen: React.FC = () => {
       setReport(data);
     })();
   }, [selectedFy, activeBusiness]);
+
+
+  const handleExport = async () => {
+    if (!report) return;
+    try {
+      await exportService.exportCsv(`FY_Balance_${report.fy}`, [
+        {
+          title: `Financial Year Statement (FY ${report.fy})`,
+          subtitle: `${activeBusiness?.name || ''} · ${report.from} to ${report.to}`,
+          headers: ['Metric', 'Amount'],
+          rows: [
+            ['Total Sales', report.sales],
+            ['Total Purchases', report.purchases],
+            ['Receipts (Money In)', report.receipts],
+            ['Payments (Money Out)', report.paidOut],
+            ['Current Stock Value', report.stockValue],
+            ['Gross Profit (Sales - Purchases)', report.grossProfit],
+          ],
+        },
+      ]);
+    } catch (e: any) {
+      Alert.alert('Export Failed', e.message);
+    }
+  };
 
   return (
     <ScreenWrapper>
@@ -71,6 +97,14 @@ export const FyBalanceScreen: React.FC = () => {
 
         {report && (
           <>
+            <Button
+              title={`Export FY ${report.fy} CSV`}
+              icon="download-outline"
+              size="sm"
+              variant="outline"
+              onPress={handleExport}
+              style={{ marginBottom: 12 }}
+            />
             {/* Turnover & Gross Margin Highlights */}
             <Card style={[styles.highlightCard, { backgroundColor: colors.palette.primaryLight }]}>
               <Text style={{ fontSize: 11, fontWeight: '700', color: colors.palette.primaryDark, textTransform: 'uppercase' }}>

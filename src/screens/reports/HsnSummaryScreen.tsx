@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, RefreshControl, Alert } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useBusiness } from '../../context/BusinessContext';
 import { reportService } from '../../services/reportService';
 import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
 import { Card } from '../../components/common/Card';
 import { DatePickerField } from '../../components/common/DatePickerField';
+import { Button } from '../../components/common/Button';
+import { exportService } from '../../services/exportService';
 import { formatCurrency } from '../../utils/formatters';
 
 export const HsnSummaryScreen: React.FC = () => {
@@ -49,6 +51,25 @@ export const HsnSummaryScreen: React.FC = () => {
     totalIgst += r.igst;
   });
 
+
+  const handleExport = async () => {
+    try {
+      await exportService.exportCsv('HSN_Summary' + (from ? `_${from}` : '') + (to ? `_${to}` : ''), [
+        {
+          title: 'HSN / SAC Summary (Sales)',
+          subtitle: `${activeBusiness?.name || ''}${from || to ? ` · ${from || 'start'} to ${to || 'today'}` : ''}`,
+          headers: ['HSN', 'Description', 'UQC', 'Qty', 'Taxable', 'Rate %', 'CGST', 'SGST', 'IGST', 'Total Value'],
+          rows: rows.map((h: any) => [
+            h.hsn, h.description, h.uqc, h.total_qty, h.total_taxable, h.gst_rate,
+            h.cgst, h.sgst, h.igst, h.total_value,
+          ]),
+        },
+      ]);
+    } catch (e: any) {
+      Alert.alert('Export Failed', e.message);
+    }
+  };
+
   return (
     <ScreenWrapper>
       <View style={styles.container}>
@@ -68,6 +89,14 @@ export const HsnSummaryScreen: React.FC = () => {
               containerStyle={{ flex: 1, marginBottom: 0 }}
             />
           </View>
+          <Button
+            title="Export CSV"
+            icon="download-outline"
+            size="sm"
+            variant="outline"
+            onPress={handleExport}
+            style={{ marginTop: 10 }}
+          />
         </Card>
 
         {/* Totals Banner */}
