@@ -5,7 +5,7 @@ import { useBusiness } from '../../context/BusinessContext';
 import { reportService } from '../../services/reportService';
 import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
 import { Card } from '../../components/common/Card';
-import { Input } from '../../components/common/Input';
+import { DatePickerField } from '../../components/common/DatePickerField';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 
 export const SalesRegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
@@ -46,18 +46,16 @@ export const SalesRegisterScreen: React.FC<{ navigation: any }> = ({ navigation 
         {/* Date Filter Card */}
         <Card style={styles.filterCard}>
           <View style={styles.grid2}>
-            <Input
+            <DatePickerField
               label="From Date"
               value={from}
-              onChangeText={setFrom}
-              placeholder="YYYY-MM-DD"
+              onChange={setFrom}
               containerStyle={{ flex: 1, marginBottom: 0 }}
             />
-            <Input
+            <DatePickerField
               label="To Date"
               value={to}
-              onChangeText={setTo}
-              placeholder="YYYY-MM-DD"
+              onChange={setTo}
               containerStyle={{ flex: 1, marginBottom: 0 }}
             />
           </View>

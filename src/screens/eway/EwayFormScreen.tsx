@@ -13,6 +13,7 @@ import { invoiceService } from '../../services/invoiceService';
 import { Invoice } from '../../types';
 import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
 import { Input } from '../../components/common/Input';
+import { DatePickerField } from '../../components/common/DatePickerField';
 import { Select } from '../../components/common/Select';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
@@ -181,10 +182,10 @@ export const EwayFormScreen: React.FC<{ navigation: any; route: any }> = ({
               placeholder="e.g. INV-0001"
               containerStyle={{ flex: 1 }}
             />
-            <Input
+            <DatePickerField
               label="Doc Date"
               value={docDate}
-              onChangeText={setDocDate}
+              onChange={setDocDate}
               containerStyle={{ flex: 1 }}
             />
           </View>

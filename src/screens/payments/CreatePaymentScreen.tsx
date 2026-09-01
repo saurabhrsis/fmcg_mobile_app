@@ -14,6 +14,7 @@ import { invoiceService } from '../../services/invoiceService';
 import { Party, PaymentType, PaymentMode, Invoice } from '../../types';
 import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
 import { Input } from '../../components/common/Input';
+import { DatePickerField } from '../../components/common/DatePickerField';
 import { Select } from '../../components/common/Select';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
@@ -175,10 +176,10 @@ export const CreatePaymentScreen: React.FC<{ navigation: any; route: any }> = ({
             />
           </View>
 
-          <Input
-            label="Payment Date (YYYY-MM-DD)"
+          <DatePickerField
+            label="Payment Date"
             value={date}
-            onChangeText={setDate}
+            onChange={setDate}
           />
 
           {unpaidInvoices.length > 0 && (

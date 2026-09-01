@@ -24,6 +24,7 @@ import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
+import { DatePickerField } from '../../components/common/DatePickerField';
 import { computeLineMath } from '../../utils/stock';
 import { formatCurrency, getTodayIso, round2 } from '../../utils/formatters';
 import { isInterState } from '../../utils/gstState';
@@ -90,6 +91,17 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
   const [productModal, setProductModal] = useState(false);
   const [lineEditorModal, setLineEditorModal] = useState(false);
   const [editingLineIndex, setEditingLineIndex] = useState<number | null>(null);
+
+  // Party search & inline quick-add (create a new customer/supplier without
+  // leaving the voucher screen).
+  const [partySearch, setPartySearch] = useState('');
+  const [addingParty, setAddingParty] = useState(false);
+  const [newPartyName, setNewPartyName] = useState('');
+  const [newPartyPhone, setNewPartyPhone] = useState('');
+  const [newPartyGstin, setNewPartyGstin] = useState('');
+  const [newPartyState, setNewPartyState] = useState('');
+  const [newPartyAddress, setNewPartyAddress] = useState('');
+  const [savingParty, setSavingParty] = useState(false);
 
   // Active editing line state
   const [currentLine, setCurrentLine] = useState<Partial<InvoiceItem>>({
@@ -275,6 +287,59 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
     irn, ackNo, ackDate,
   ].filter((v) => v && String(v).trim()).length;
 
+  // Party helpers — search filter + inline creation.
+  const partyTypeNeeded = type === 'purchase' || noteKind === 'debit' ? 'supplier' : 'customer';
+  const partyTypeLabel = partyTypeNeeded === 'supplier' ? 'Supplier' : 'Customer';
+
+  const filteredParties = partySearch.trim()
+    ? parties.filter((p) => {
+        const q = partySearch.trim().toLowerCase();
+        return (
+          p.name.toLowerCase().includes(q) ||
+          (p.phone || '').toLowerCase().includes(q) ||
+          (p.gstin || '').toLowerCase().includes(q)
+        );
+      })
+    : parties;
+
+  const resetNewPartyForm = () => {
+    setAddingParty(false);
+    setNewPartyName('');
+    setNewPartyPhone('');
+    setNewPartyGstin('');
+    setNewPartyState('');
+    setNewPartyAddress('');
+  };
+
+  const handleQuickAddParty = async () => {
+    if (!newPartyName.trim()) {
+      Alert.alert('Name Required', `Please enter the ${partyTypeLabel.toLowerCase()} name`);
+      return;
+    }
+    setSavingParty(true);
+    try {
+      const created = await partyService.createParty({
+        name: newPartyName,
+        type: partyTypeNeeded,
+        phone: newPartyPhone,
+        gstin: newPartyGstin,
+        state: newPartyState,
+        address: newPartyAddress,
+      });
+      // Refresh the list, auto-select the new party and close the modal.
+      const pList = await partyService.getAllParties(partyTypeNeeded, undefined, activeBusiness!.id);
+      setParties(pList);
+      setSelectedParty(created);
+      resetNewPartyForm();
+      setPartySearch('');
+      setPartyModal(false);
+    } catch (e: any) {
+      Alert.alert('Could not add party', e.message);
+    } finally {
+      setSavingParty(false);
+    }
+  };
+
   return (
     <ScreenWrapper>
       <ScrollView contentContainerStyle={styles.container}>
@@ -295,10 +360,10 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
               onChangeText={setInvoiceNo}
               containerStyle={{ flex: 1 }}
             />
-            <Input
-              label="Date (YYYY-MM-DD)"
+            <DatePickerField
+              label="Invoice Date"
               value={date}
-              onChangeText={setDate}
+              onChange={setDate}
               containerStyle={{ flex: 1 }}
             />
           </View>
@@ -491,7 +556,7 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
                     </View>
                     <View style={styles.grid2}>
                       <Input label="Buyer's Order No." value={poNo} onChangeText={setPoNo} placeholder="e.g. PO-890" containerStyle={{ flex: 1 }} />
-                      <Input label="Order Date (YYYY-MM-DD)" value={poDate} onChangeText={setPoDate} placeholder="2026-09-01" containerStyle={{ flex: 1 }} />
+                      <DatePickerField label="Order Date" value={poDate} onChange={setPoDate} allowClear containerStyle={{ flex: 1 }} />
                     </View>
                     <View style={styles.grid2}>
                       <Input label="Reference No. & Date" value={otherRef} onChangeText={setOtherRef} containerStyle={{ flex: 1 }} />
@@ -510,7 +575,7 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
                     </View>
                     <View style={styles.grid2}>
                       <Input label="Delivery Note" value={deliveryNote} onChangeText={setDeliveryNote} containerStyle={{ flex: 1 }} />
-                      <Input label="Delivery Note Date" value={deliveryNoteDate} onChangeText={setDeliveryNoteDate} placeholder="YYYY-MM-DD" containerStyle={{ flex: 1 }} />
+                      <DatePickerField label="Delivery Note Date" value={deliveryNoteDate} onChange={setDeliveryNoteDate} allowClear containerStyle={{ flex: 1 }} />
                     </View>
                     <View style={styles.grid2}>
                       <Input label="Dispatch Doc No." value={dispatchDoc} onChangeText={setDispatchDoc} containerStyle={{ flex: 1 }} />
@@ -537,7 +602,7 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
                     <Input label="IRN" value={irn} onChangeText={setIrn} autoCapitalize="none" />
                     <View style={styles.grid2}>
                       <Input label="Ack No." value={ackNo} onChangeText={setAckNo} containerStyle={{ flex: 1 }} />
-                      <Input label="Ack Date" value={ackDate} onChangeText={setAckDate} placeholder="YYYY-MM-DD" containerStyle={{ flex: 1 }} />
+                      <DatePickerField label="Ack Date" value={ackDate} onChange={setAckDate} allowClear containerStyle={{ flex: 1 }} />
                     </View>
                   </View>
                 )}
@@ -555,40 +620,140 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
           style={{ marginTop: 8 }}
         />
 
-        {/* Party Picker Modal */}
+        {/* Party Picker Modal — search + quick-add */}
         <Modal visible={partyModal} transparent animationType="slide">
           <View style={styles.modalOverlay}>
-            <View style={[styles.modalBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={[styles.modalBox, { backgroundColor: colors.surface, borderColor: colors.border, maxHeight: '85%' }]}>
               <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: colors.text }]}>Select Party</Text>
-                <TouchableOpacity onPress={() => setPartyModal(false)}>
-                  <Ionicons name="close" size={24} color={colors.textMuted} />
+                <Text style={[styles.modalTitle, { color: colors.text }]}>
+                  {addingParty ? `New ${partyTypeLabel}` : `Select ${partyTypeLabel}`}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    if (addingParty) {
+                      resetNewPartyForm();
+                    } else {
+                      setPartySearch('');
+                      setPartyModal(false);
+                    }
+                  }}
+                >
+                  <Ionicons name={addingParty ? 'arrow-back' : 'close'} size={24} color={colors.textMuted} />
                 </TouchableOpacity>
               </View>
 
-              <FlatList
-                data={parties}
-                keyExtractor={(p) => String(p.id)}
-                renderItem={({ item }) => (
+              {addingParty ? (
+                /* Inline quick-add form — create the party without leaving the voucher */
+                <ScrollView keyboardShouldPersistTaps="handled">
+                  <Input
+                    label={`${partyTypeLabel} Name *`}
+                    value={newPartyName}
+                    onChangeText={setNewPartyName}
+                    placeholder={`e.g. ${partyTypeNeeded === 'supplier' ? 'Metro Traders' : 'Sunrise Supermarket'}`}
+                  />
+                  <View style={styles.grid2}>
+                    <Input
+                      label="Phone"
+                      value={newPartyPhone}
+                      onChangeText={setNewPartyPhone}
+                      keyboardType="phone-pad"
+                      placeholder="Mobile number"
+                      containerStyle={{ flex: 1 }}
+                    />
+                    <Input
+                      label="State"
+                      value={newPartyState}
+                      onChangeText={setNewPartyState}
+                      placeholder="e.g. Maharashtra"
+                      containerStyle={{ flex: 1 }}
+                    />
+                  </View>
+                  <Input
+                    label="GSTIN (Optional)"
+                    value={newPartyGstin}
+                    onChangeText={(t) => setNewPartyGstin(t.toUpperCase())}
+                    autoCapitalize="characters"
+                    maxLength={15}
+                    placeholder="15-digit GSTIN"
+                  />
+                  <Input
+                    label="Address (Optional)"
+                    value={newPartyAddress}
+                    onChangeText={setNewPartyAddress}
+                    placeholder="Billing address"
+                  />
+                  <Button
+                    title={`Save & Select ${partyTypeLabel}`}
+                    onPress={handleQuickAddParty}
+                    loading={savingParty}
+                    style={{ marginTop: 4 }}
+                  />
+                </ScrollView>
+              ) : (
+                <>
+                  {/* Search box */}
+                  <Input
+                    value={partySearch}
+                    onChangeText={setPartySearch}
+                    icon="search"
+                    placeholder={`Search ${partyTypeLabel.toLowerCase()} by name, phone or GSTIN...`}
+                    autoCapitalize="none"
+                  />
+
+                  {/* Quick-add button */}
                   <TouchableOpacity
-                    style={[styles.partyItem, { borderBottomColor: colors.border }]}
+                    style={[styles.addPartyBtn, { backgroundColor: colors.palette.primaryLight }]}
                     onPress={() => {
-                      setSelectedParty(item);
-                      setPartyModal(false);
+                      // Pre-fill the name with what the user was searching for.
+                      setNewPartyName(partySearch.trim());
+                      setAddingParty(true);
                     }}
                   >
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.partyItemName, { color: colors.text }]}>{item.name}</Text>
-                      <Text style={{ fontSize: 11, color: colors.textMuted }}>
-                        {item.phone || 'No phone'} • {item.state || 'India'}
-                      </Text>
-                    </View>
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: colors.palette.primary }}>
-                      {formatCurrency(item.balance || 0)}
+                    <Ionicons name="person-add" size={16} color={colors.palette.primaryDark} />
+                    <Text style={{ color: colors.palette.primaryDark, fontWeight: '700', fontSize: 13 }}>
+                      + Add New {partyTypeLabel}
+                      {partySearch.trim() ? ` "${partySearch.trim()}"` : ''}
                     </Text>
                   </TouchableOpacity>
-                )}
-              />
+
+                  <FlatList
+                    data={filteredParties}
+                    keyExtractor={(p) => String(p.id)}
+                    keyboardShouldPersistTaps="handled"
+                    ListEmptyComponent={
+                      <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+                        <Ionicons name="people-outline" size={30} color={colors.textMuted} />
+                        <Text style={{ color: colors.textMuted, fontSize: 13, marginTop: 6 }}>
+                          {partySearch.trim()
+                            ? `No ${partyTypeLabel.toLowerCase()} matches "${partySearch.trim()}"`
+                            : `No ${partyTypeLabel.toLowerCase()}s yet — add one above`}
+                        </Text>
+                      </View>
+                    }
+                    renderItem={({ item }) => (
+                      <TouchableOpacity
+                        style={[styles.partyItem, { borderBottomColor: colors.border }]}
+                        onPress={() => {
+                          setSelectedParty(item);
+                          setPartySearch('');
+                          setPartyModal(false);
+                        }}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.partyItemName, { color: colors.text }]}>{item.name}</Text>
+                          <Text style={{ fontSize: 11, color: colors.textMuted }}>
+                            {item.phone || 'No phone'} • {item.state || 'India'}
+                            {item.gstin ? ` • ${item.gstin}` : ''}
+                          </Text>
+                        </View>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: colors.palette.primary }}>
+                          {formatCurrency(item.balance || 0)}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  />
+                </>
+              )}
             </View>
           </View>
         </Modal>
@@ -913,6 +1078,15 @@ const styles = StyleSheet.create({
   partyItemName: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  addPartyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginBottom: 10,
   },
   unitChip: {
     paddingVertical: 6,
