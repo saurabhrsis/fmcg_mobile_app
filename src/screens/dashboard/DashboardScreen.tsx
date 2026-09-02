@@ -21,6 +21,7 @@ import { Button } from '../../components/common/Button';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import { consumePendingNav } from '../../utils/pendingNav';
 
 export const DashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { colors } = useTheme();
@@ -30,6 +31,16 @@ export const DashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [hasUnreadNotifs, setHasUnreadNotifs] = useState(false);
+
+  // Post-registration redirect: land the new user on the Business Profile
+  // editor so they can complete / update their business details.
+  useEffect(() => {
+    const p = consumePendingNav();
+    if (p) {
+      const t = setTimeout(() => navigation.navigate(p.name, p.params), 250);
+      return () => clearTimeout(t);
+    }
+  }, []);
 
   const loadMetrics = async () => {
     if (!activeBusiness) return;

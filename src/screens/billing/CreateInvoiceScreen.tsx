@@ -25,6 +25,7 @@ import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
 import { DatePickerField } from '../../components/common/DatePickerField';
+import { StateSelect } from '../../components/common/StateSelect';
 import { computeLineMath } from '../../utils/stock';
 import { formatCurrency, getTodayIso, round2 } from '../../utils/formatters';
 import { isInterState } from '../../utils/gstState';
@@ -665,7 +666,7 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
                         </View>
                         <Input label="Address" value={consigneeAddress} onChangeText={setConsigneeAddress} />
                         <View style={styles.grid2}>
-                          <Input label="State" value={consigneeState} onChangeText={setConsigneeState} containerStyle={{ flex: 1 }} />
+                          <StateSelect label="State" value={consigneeState} onChange={(name) => setConsigneeState(name)} containerStyle={{ flex: 1 }} />
                           <Input label="Place of Supply" value={placeOfSupply} onChangeText={setPlaceOfSupply} containerStyle={{ flex: 1 }} />
                         </View>
                       </>
@@ -786,11 +787,10 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
                       placeholder="Mobile number"
                       containerStyle={{ flex: 1 }}
                     />
-                    <Input
+                    <StateSelect
                       label="State"
                       value={newPartyState}
-                      onChangeText={setNewPartyState}
-                      placeholder="e.g. Maharashtra"
+                      onChange={(name) => setNewPartyState(name)}
                       containerStyle={{ flex: 1 }}
                     />
                   </View>

@@ -4,8 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { AppNavigator } from './AppNavigator';
-import { LoginScreen } from '../screens/auth/LoginScreen';
-import { BusinessSetupScreen } from '../screens/auth/BusinessSetupScreen';
+import { AuthNavigator } from './AuthNavigator';
 
 export const RootNavigator: React.FC = () => {
   const { user, isLoading, needsSetup } = useAuth();
@@ -42,10 +41,8 @@ export const RootNavigator: React.FC = () => {
         },
       }}
     >
-      {needsSetup ? (
-        <BusinessSetupScreen />
-      ) : !user ? (
-        <LoginScreen />
+      {!user ? (
+        <AuthNavigator initialRouteName={needsSetup ? 'Register' : 'Login'} />
       ) : (
         <AppNavigator />
       )}

@@ -25,13 +25,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await getDatabase();
       const setupNeeded = await authService.needsSetup();
       setNeedsSetup(setupNeeded);
-      if (!setupNeeded) {
-        // Auto-login default admin for rapid mobile testing if no session
-        const admin = await authService.getUserById(1);
-        if (admin && admin.active) {
-          setUser(admin);
-        }
-      }
     } catch (e) {
       console.error('Auth initialization error:', e);
     } finally {

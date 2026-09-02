@@ -13,6 +13,7 @@ import { lookupService } from '../../services/lookupService';
 import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
 import { Input } from '../../components/common/Input';
 import { Select } from '../../components/common/Select';
+import { StateSelect } from '../../components/common/StateSelect';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 
@@ -161,11 +162,10 @@ export const PartyFormScreen: React.FC<{ navigation: any; route: any }> = ({
           />
 
           <View style={styles.grid2}>
-            <Input
+            <StateSelect
               label="State"
               value={state}
-              onChangeText={setState}
-              placeholder="e.g. Delhi, Maharashtra"
+              onChange={(name) => setState(name)}
               containerStyle={{ flex: 1 }}
             />
             <Input

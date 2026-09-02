@@ -15,26 +15,24 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { seedDatabase } from '../../db/database';
 
-export const LoginScreen: React.FC = () => {
-  const { login, checkSetupStatus } = useAuth();
+export const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+  const { login } = useAuth();
   const { colors } = useTheme();
 
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [seeding, setSeeding] = useState(false);
 
-  const handleLogin = async (u = username, p = password) => {
-    if (!u.trim()) {
+  const handleLogin = async () => {
+    if (!username.trim()) {
       Alert.alert('Error', 'Please enter username or mobile');
       return;
     }
     setLoading(true);
     try {
-      const res = await login(u.trim(), p);
+      const res = await login(username.trim(), password);
       if (!res.success) {
         Alert.alert('Login Failed', res.error || 'Invalid credentials');
       }
@@ -45,26 +43,13 @@ export const LoginScreen: React.FC = () => {
     }
   };
 
-  const handleQuickSeedAndLogin = async () => {
-    setSeeding(true);
-    try {
-      await seedDatabase();
-      await checkSetupStatus();
-      await handleLogin('admin', 'admin123');
-    } catch (e: any) {
-      Alert.alert('Error', e.message);
-    } finally {
-      setSeeding(false);
-    }
-  };
-
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         {/* Header Branding */}
         <View style={styles.header}>
           <View style={[styles.iconCircle, { backgroundColor: colors.palette.primary }]}>
@@ -125,7 +110,7 @@ export const LoginScreen: React.FC = () => {
 
           <TouchableOpacity
             style={[styles.loginButton, { backgroundColor: colors.palette.primary }]}
-            onPress={() => handleLogin()}
+            onPress={handleLogin}
             disabled={loading}
           >
             {loading ? (
@@ -138,61 +123,32 @@ export const LoginScreen: React.FC = () => {
             )}
           </TouchableOpacity>
 
-          {/* Quick Demo Logins */}
-          <View style={styles.quickSection}>
-            <Text style={[styles.quickTitle, { color: colors.textMuted }]}>Quick Login Options:</Text>
-            <View style={styles.quickRow}>
-              <TouchableOpacity
-                style={[styles.quickBadge, { backgroundColor: colors.palette.primaryLight }]}
-                onPress={() => {
-                  setUsername('admin');
-                  setPassword('admin123');
-                  handleLogin('admin', 'admin123');
-                }}
-              >
-                <Text style={[styles.quickBadgeText, { color: colors.palette.primary }]}>Admin</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.quickBadge, { backgroundColor: colors.palette.secondaryLight }]}
-                onPress={() => {
-                  setUsername('cashier');
-                  setPassword('cashier123');
-                  handleLogin('cashier', 'cashier123');
-                }}
-              >
-                <Text style={[styles.quickBadgeText, { color: colors.palette.secondary }]}>Cashier</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.quickBadge, { backgroundColor: '#F3E8FF' }]}
-                onPress={() => {
-                  setUsername('manager');
-                  setPassword('mgr123');
-                  handleLogin('manager', 'mgr123');
-                }}
-              >
-                <Text style={[styles.quickBadgeText, { color: '#7E22CE' }]}>Manager</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Seed Demo DB Button */}
           <TouchableOpacity
-            style={[styles.seedButton, { borderColor: colors.border }]}
-            onPress={handleQuickSeedAndLogin}
-            disabled={seeding}
+            style={styles.forgotLink}
+            onPress={() => navigation.navigate('ForgotPassword')}
           >
-            {seeding ? (
-              <ActivityIndicator color={colors.palette.primary} size="small" />
-            ) : (
-              <>
-                <Ionicons name="refresh-circle-outline" size={18} color={colors.palette.primary} />
-                <Text style={[styles.seedButtonText, { color: colors.palette.primary }]}>
-                  Reset & Load Complete Demo Data
-                </Text>
-              </>
-            )}
+            <Text style={[styles.forgotLinkText, { color: colors.palette.primary }]}>
+              Forgot Password?
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Register */}
+        <View style={[styles.registerCard, { backgroundColor: colors.palette.primaryLight, borderColor: colors.palette.primary }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.registerTitle, { color: colors.palette.primary }]}>
+              New to FMCG Suite?
+            </Text>
+            <Text style={[styles.registerDesc, { color: colors.textSecondary }]}>
+              Register your account & business to start billing in minutes.
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.registerButton, { backgroundColor: colors.palette.primary }]}
+            onPress={() => navigation.navigate('Register')}
+          >
+            <Ionicons name="person-add-outline" size={16} color="#FFF" />
+            <Text style={styles.registerButtonText}>Register</Text>
           </TouchableOpacity>
         </View>
 
@@ -310,44 +266,44 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  quickSection: {
-    marginTop: 20,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#EEE',
-  },
-  quickTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  quickRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  quickBadge: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
+  forgotLink: {
     alignItems: 'center',
+    marginTop: 14,
   },
-  quickBadgeText: {
+  forgotLinkText: {
     fontSize: 13,
+    fontWeight: '600',
+  },
+  registerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    padding: 16,
+    marginTop: 18,
+    gap: 12,
+  },
+  registerTitle: {
+    fontSize: 14,
     fontWeight: '700',
   },
-  seedButton: {
+  registerDesc: {
+    fontSize: 12,
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  registerButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingVertical: 10,
-    marginTop: 16,
     gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
   },
-  seedButtonText: {
+  registerButtonText: {
+    color: '#FFF',
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   footer: {
     alignItems: 'center',

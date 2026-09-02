@@ -13,6 +13,7 @@ import { lookupService } from '../../services/lookupService';
 import { printService } from '../../services/printService';
 import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
 import { Input } from '../../components/common/Input';
+import { StateSelect } from '../../components/common/StateSelect';
 import { Select } from '../../components/common/Select';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
@@ -206,7 +207,7 @@ export const BusinessFormScreen: React.FC<{ navigation: any; route: any }> = ({
           </View>
           <Input label="GSTIN" value={gstin} onChangeText={handleGstinChange} placeholder="15-digit GSTIN" autoCapitalize="characters" maxLength={15} />
           <View style={styles.grid2}>
-            <Input label="State" value={state} onChangeText={setState} containerStyle={{ flex: 1 }} />
+            <StateSelect label="State" value={state} onChange={(name) => setState(name)} containerStyle={{ flex: 1 }} />
             <Input label="PAN" value={pan} onChangeText={setPan} autoCapitalize="characters" containerStyle={{ flex: 1 }} />
           </View>
           <Input label="Business Address" value={address} onChangeText={setAddress} multiline numberOfLines={2} />
