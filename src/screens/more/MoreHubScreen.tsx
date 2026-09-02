@@ -71,6 +71,13 @@ export const MoreHubScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
       action: () => navigation.navigate('DataImport'),
     },
     {
+      title: 'Desktop Portal Sync',
+      sub: 'Two-way sync & data exchange with desktop',
+      icon: 'sync-outline' as const,
+      color: colors.palette.success,
+      action: () => navigation.navigate('DesktopSync'),
+    },
+    {
       title: 'Database Backup & Restore',
       sub: 'Offline JSON backup, restore & data wipe',
       icon: 'shield-checkmark-outline' as const,

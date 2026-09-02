@@ -54,6 +54,7 @@ import { ThemeSettingsScreen } from '../screens/settings/ThemeSettingsScreen';
 import { BackupRestoreScreen } from '../screens/settings/BackupRestoreScreen';
 import { DataImportScreen } from '../screens/settings/DataImportScreen';
 import { WhatsAppSettingsScreen } from '../screens/settings/WhatsAppSettingsScreen';
+import { DesktopSyncScreen } from '../screens/settings/DesktopSyncScreen';
 import { SupportScreen } from '../screens/settings/SupportScreen';
 
 const Stack = createNativeStackNavigator();
@@ -113,6 +114,7 @@ export const AppNavigator: React.FC = () => {
       <Stack.Screen name="FeaturesConfig" component={FeaturesConfigScreen} />
       <Stack.Screen name="ThemeSettings" component={ThemeSettingsScreen} />
       <Stack.Screen name="BackupRestore" component={BackupRestoreScreen} />
+      <Stack.Screen name="DesktopSync" component={DesktopSyncScreen} />
       <Stack.Screen name="DataImport" component={DataImportScreen} />
       <Stack.Screen name="WhatsAppSettings" component={WhatsAppSettingsScreen} />
       <Stack.Screen name="Support" component={SupportScreen} />
