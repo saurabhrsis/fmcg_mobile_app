@@ -51,8 +51,12 @@ export const LicenseScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
       : '#059669';
 
   return (
-    <ScreenWrapper>
-      <ScrollView contentContainerStyle={styles.content}>
+    <ScreenWrapper title="License & Activation" subtitle="Device license & plan details">
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <View style={[styles.hero, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={[styles.badge, { backgroundColor: badgeColor }]}>
             <Ionicons
@@ -131,7 +135,7 @@ export const LicenseScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
 };
 
 const styles = StyleSheet.create({
-  content: { padding: 16, paddingBottom: 40 },
+  content: { padding: 16, paddingBottom: 60 },
   hero: { borderWidth: 1, borderRadius: 14, padding: 18, alignItems: 'center', marginBottom: 14 },
   badge: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
   heroTitle: { fontSize: 16, fontWeight: '800', marginTop: 10, textAlign: 'center' },

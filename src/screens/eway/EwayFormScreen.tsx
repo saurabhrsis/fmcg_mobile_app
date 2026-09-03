@@ -74,7 +74,6 @@ export const EwayFormScreen: React.FC<{ navigation: any; route: any }> = ({
       if (invoiceId) {
         handlePrefillFromInvoice(invoiceId);
       } else {
-        // Prefill default supplier from active business
         setFromName(activeBusiness.name);
         setFromGstin(activeBusiness.gstin || '');
         setFromAddr(activeBusiness.address || '');
@@ -114,7 +113,6 @@ export const EwayFormScreen: React.FC<{ navigation: any; route: any }> = ({
   };
 
   const handleSave = async () => {
-    // Licensing gate: trial expired / license expired => read-only mode.
     const gate = ensureWritable();
     if (!gate.allowed) {
       Alert.alert('Read-Only Mode', gate.reason || 'Your license is not active.');
@@ -162,8 +160,12 @@ export const EwayFormScreen: React.FC<{ navigation: any; route: any }> = ({
   };
 
   return (
-    <ScreenWrapper>
-      <ScrollView contentContainerStyle={styles.container}>
+    <ScreenWrapper title="Generate E-Way Bill" subtitle="Transport & consignment movement slip">
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={[styles.title, { color: colors.text }]}>Generate E-Way Bill</Text>
 
         {/* Invoice Link */}

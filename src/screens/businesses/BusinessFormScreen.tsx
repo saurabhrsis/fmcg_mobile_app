@@ -46,7 +46,7 @@ export const BusinessFormScreen: React.FC<{ navigation: any; route: any }> = ({
   const [pan, setPan] = useState('');
   const [fssai, setFssai] = useState('');
 
-  // Bill Branding Images (stored as base64 data URIs)
+  // Bill Branding Images
   const [logo, setLogo] = useState('');
   const [signature, setSignature] = useState('');
   const [stamp, setStamp] = useState('');
@@ -59,7 +59,7 @@ export const BusinessFormScreen: React.FC<{ navigation: any; route: any }> = ({
   const [billSignatory, setBillSignatory] = useState('Authorised Signatory');
   const [billTerms, setBillTerms] = useState('1. Goods once sold will not be taken back.\n2. Subject to Delhi jurisdiction.');
 
-  // Invoice Texts — customise labels & wording on the bill
+  // Invoice Texts
   const [billBilltoLabel, setBillBilltoLabel] = useState('');
   const [billTermsHeading, setBillTermsHeading] = useState('');
   const [billDeclaration, setBillDeclaration] = useState('');
@@ -119,7 +119,6 @@ export const BusinessFormScreen: React.FC<{ navigation: any; route: any }> = ({
     }
   };
 
-  // One shared payload used by create, update and the bill preview.
   const buildPayload = () => ({
     name,
     gstin,
@@ -153,8 +152,6 @@ export const BusinessFormScreen: React.FC<{ navigation: any; route: any }> = ({
     bill_terms: billTerms,
   });
 
-  // Open a sample invoice print preview using the CURRENT (unsaved) settings,
-  // so the user can see exactly how the selected bill format will look.
   const handlePreviewFormat = async () => {
     setPreviewing(true);
     try {
@@ -192,8 +189,15 @@ export const BusinessFormScreen: React.FC<{ navigation: any; route: any }> = ({
   };
 
   return (
-    <ScreenWrapper>
-      <ScrollView contentContainerStyle={styles.container}>
+    <ScreenWrapper
+      title={editId ? 'Customize Business' : 'Add New Business'}
+      subtitle="Firm profile, logo & tax details"
+    >
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={[styles.title, { color: colors.text }]}>
           {editId ? 'Customize Business & Bill' : 'Add New Business Profile'}
         </Text>
@@ -207,7 +211,7 @@ export const BusinessFormScreen: React.FC<{ navigation: any; route: any }> = ({
           </View>
           <Input label="GSTIN" value={gstin} onChangeText={handleGstinChange} placeholder="15-digit GSTIN" autoCapitalize="characters" maxLength={15} />
           <View style={styles.grid2}>
-            <StateSelect label="State" value={state} onChange={(name) => setState(name)} containerStyle={{ flex: 1 }} />
+            <StateSelect label="State" value={state} onChange={(sName) => setState(sName)} containerStyle={{ flex: 1 }} />
             <Input label="PAN" value={pan} onChangeText={setPan} autoCapitalize="characters" containerStyle={{ flex: 1 }} />
           </View>
           <Input label="Business Address" value={address} onChangeText={setAddress} multiline numberOfLines={2} />
@@ -284,7 +288,7 @@ export const BusinessFormScreen: React.FC<{ navigation: any; route: any }> = ({
           <Input label="Terms & Conditions (Printed on Bill)" value={billTerms} onChangeText={setBillTerms} multiline numberOfLines={3} />
         </Card>
 
-        {/* Invoice Texts — customise labels & wording on the bill */}
+        {/* Invoice Texts */}
         <Card>
           <Text style={[styles.sectionHeading, { color: colors.text }]}>Invoice Texts</Text>
           <Text style={{ fontSize: 11, color: colors.textMuted, marginBottom: 10 }}>

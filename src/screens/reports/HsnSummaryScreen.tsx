@@ -51,7 +51,6 @@ export const HsnSummaryScreen: React.FC = () => {
     totalIgst += r.igst;
   });
 
-
   const handleExport = async () => {
     try {
       await exportService.exportCsv('HSN_Summary' + (from ? `_${from}` : '') + (to ? `_${to}` : ''), [
@@ -71,7 +70,7 @@ export const HsnSummaryScreen: React.FC = () => {
   };
 
   return (
-    <ScreenWrapper>
+    <ScreenWrapper title="HSN / SAC Summary" subtitle="Table 12 GST quantities & rates">
       <View style={styles.container}>
         {/* Date Filter Card */}
         <Card style={styles.filterCard}>
@@ -134,6 +133,7 @@ export const HsnSummaryScreen: React.FC = () => {
           data={rows}
           keyExtractor={(_, idx) => String(idx)}
           contentContainerStyle={{ padding: 16, paddingBottom: 60 }}
+          keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

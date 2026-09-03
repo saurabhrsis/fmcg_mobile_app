@@ -68,7 +68,6 @@ export const PartyFormScreen: React.FC<{ navigation: any; route: any }> = ({
   };
 
   const handleSave = async () => {
-    // Licensing gate: trial expired / license expired => read-only mode.
     const gate = ensureWritable();
     if (!gate.allowed) {
       Alert.alert('Read-Only Mode', gate.reason || 'Your license is not active.');
@@ -116,8 +115,15 @@ export const PartyFormScreen: React.FC<{ navigation: any; route: any }> = ({
   };
 
   return (
-    <ScreenWrapper>
-      <ScrollView contentContainerStyle={styles.container}>
+    <ScreenWrapper
+      title={editId ? 'Edit Party Profile' : 'Add New Customer / Supplier'}
+      subtitle="Customer or supplier account"
+    >
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={[styles.title, { color: colors.text }]}>
           {editId ? 'Edit Party Profile' : 'Add New Customer / Supplier'}
         </Text>
@@ -173,7 +179,7 @@ export const PartyFormScreen: React.FC<{ navigation: any; route: any }> = ({
             <StateSelect
               label="State"
               value={state}
-              onChange={(name) => setState(name)}
+              onChange={(sName) => setState(sName)}
               containerStyle={{ flex: 1 }}
             />
             <Input

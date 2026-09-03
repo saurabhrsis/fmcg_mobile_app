@@ -42,7 +42,6 @@ export const PurchaseRegisterScreen: React.FC<{ navigation: any }> = ({ navigati
     setRefreshing(false);
   };
 
-
   const handleExport = async () => {
     try {
       await exportService.exportCsv('Purchase_Register' + (from ? `_${from}` : '') + (to ? `_${to}` : ''), [
@@ -63,7 +62,7 @@ export const PurchaseRegisterScreen: React.FC<{ navigation: any }> = ({ navigati
   };
 
   return (
-    <ScreenWrapper>
+    <ScreenWrapper title="Purchase Register" subtitle="Vendor invoices & input tax credit">
       <View style={styles.container}>
         {/* Date Filter Card */}
         <Card style={styles.filterCard}>
@@ -118,6 +117,7 @@ export const PurchaseRegisterScreen: React.FC<{ navigation: any }> = ({ navigati
           data={data.rows}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={{ padding: 16, paddingBottom: 60 }}
+          keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

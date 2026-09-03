@@ -10,8 +10,12 @@ export const ThemeSettingsScreen: React.FC = () => {
   const { colors, paletteKey, setPaletteKey, isDark, toggleDarkMode } = useTheme();
 
   return (
-    <ScreenWrapper>
-      <ScrollView contentContainerStyle={styles.container}>
+    <ScreenWrapper title="Theme & Appearance" subtitle="Personalize colors & dark mode">
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={[styles.title, { color: colors.text }]}>Theme & Appearance</Text>
         <Text style={{ fontSize: 11, color: colors.textMuted, marginBottom: 12 }}>
           Personalize colors, contrast & dark mode
@@ -51,7 +55,7 @@ export const ThemeSettingsScreen: React.FC = () => {
                     {
                       borderColor: isSelected ? p.primary : colors.border,
                       borderWidth: isSelected ? 2 : 1,
-                      backgroundColor: isSelected ? p.primaryLight : colors.surfaceSubtle,
+                      backgroundColor: isSelected ? (isDark ? colors.surfaceSubtle : p.primaryLight) : colors.surfaceSubtle,
                     },
                   ]}
                   onPress={() => setPaletteKey(p.id)}
@@ -61,7 +65,7 @@ export const ThemeSettingsScreen: React.FC = () => {
                     style={[
                       styles.paletteName,
                       {
-                        color: isSelected ? p.primaryDark : colors.text,
+                        color: isSelected ? (isDark ? colors.text : p.primaryDark) : colors.text,
                         fontWeight: isSelected ? '800' : '600',
                       },
                     ]}

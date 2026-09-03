@@ -112,8 +112,12 @@ export const FeaturesConfigScreen: React.FC = () => {
   ];
 
   return (
-    <ScreenWrapper>
-      <ScrollView contentContainerStyle={styles.container}>
+    <ScreenWrapper title="Feature Configuration" subtitle="Toggle invoice and billing rules">
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={[styles.title, { color: colors.text }]}>Feature Toggles & Billing Flags</Text>
         <Text style={{ fontSize: 11, color: colors.textMuted, marginBottom: 12 }}>
           Customize inventory behaviors, validation guards, and invoice layouts

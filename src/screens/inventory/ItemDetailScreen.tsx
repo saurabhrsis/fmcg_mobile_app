@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   Alert,
 } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
@@ -17,7 +16,6 @@ import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { formatCurrency, formatDate } from '../../utils/formatters';
-import { Ionicons } from '@expo/vector-icons';
 
 export const ItemDetailScreen: React.FC<{ navigation: any; route: any }> = ({
   navigation,
@@ -68,8 +66,12 @@ export const ItemDetailScreen: React.FC<{ navigation: any; route: any }> = ({
   };
 
   return (
-    <ScreenWrapper>
-      <ScrollView contentContainerStyle={styles.container}>
+    <ScreenWrapper title="Product Details" subtitle={item?.name || undefined}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         {/* Product Overview Card */}
         <Card>
           <View style={styles.topRow}>

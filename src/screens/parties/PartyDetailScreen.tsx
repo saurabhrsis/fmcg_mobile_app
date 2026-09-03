@@ -17,7 +17,6 @@ import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { formatCurrency, formatDate } from '../../utils/formatters';
-import { Ionicons } from '@expo/vector-icons';
 
 export const PartyDetailScreen: React.FC<{ navigation: any; route: any }> = ({
   navigation,
@@ -74,8 +73,15 @@ export const PartyDetailScreen: React.FC<{ navigation: any; route: any }> = ({
   const bal = party?.balance || 0;
 
   return (
-    <ScreenWrapper>
-      <ScrollView contentContainerStyle={styles.container}>
+    <ScreenWrapper
+      title="Party Profile"
+      subtitle={party ? `${party.name} (${party.type.toUpperCase()})` : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         {/* Party Profile Card */}
         <Card>
           <View style={styles.headerRow}>
@@ -206,7 +212,7 @@ export const PartyDetailScreen: React.FC<{ navigation: any; route: any }> = ({
             Payments & Receipts ({(party?.payments || []).length})
           </Text>
           {(party?.payments || []).map((pay, idx) => (
-            <View
+            <TouchableOpacity
               key={idx}
               style={[
                 styles.historyRow,
@@ -230,7 +236,7 @@ export const PartyDetailScreen: React.FC<{ navigation: any; route: any }> = ({
               >
                 {pay.type === 'in' ? '+' : '-'}{formatCurrency(pay.amount)}
               </Text>
-            </View>
+            </TouchableOpacity>
           ))}
         </Card>
 

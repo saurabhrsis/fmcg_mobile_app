@@ -18,7 +18,6 @@ import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { formatCurrency, formatDate } from '../../utils/formatters';
-import { Ionicons } from '@expo/vector-icons';
 
 export const EwayDetailScreen: React.FC<{ navigation: any; route: any }> = ({
   navigation,
@@ -101,15 +100,22 @@ export const EwayDetailScreen: React.FC<{ navigation: any; route: any }> = ({
 
   if (!eway && !loading) {
     return (
-      <ScreenWrapper>
+      <ScreenWrapper title="E-Way Bill Details">
         <View style={styles.center}><Text style={{ color: colors.text }}>E-Way Bill Not Found</Text></View>
       </ScreenWrapper>
     );
   }
 
   return (
-    <ScreenWrapper>
-      <ScrollView contentContainerStyle={styles.container}>
+    <ScreenWrapper
+      title={eway?.ewb_no ? `EWB #${eway.ewb_no}` : `Doc: ${eway?.doc_no || 'E-Way Bill'}`}
+      subtitle={eway ? `Dated: ${formatDate(eway.doc_date || eway.ewb_date)}` : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         {/* Top Card */}
         <Card>
           <View style={styles.topRow}>

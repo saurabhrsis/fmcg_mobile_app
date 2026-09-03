@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,10 @@ import {
   Modal,
   Alert,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { useBusiness } from '../../context/BusinessContext';
 import { batchService } from '../../services/batchService';
@@ -30,6 +33,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 export const BatchStockScreen: React.FC = () => {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { activeBusiness } = useBusiness();
 
   const [filter, setFilter] = useState<'all' | 'available' | 'expiring' | 'expired'>('available');
@@ -162,7 +166,7 @@ export const BatchStockScreen: React.FC = () => {
   };
 
   return (
-    <ScreenWrapper>
+    <ScreenWrapper title="Batch & Expiry Tracker" subtitle="FIFO/FEFO tracking with expiry alerts">
       <View style={styles.container}>
         {/* Filters */}
         <View style={styles.filterBar}>
@@ -216,6 +220,7 @@ export const BatchStockScreen: React.FC = () => {
           data={batches}
           keyExtractor={(b) => String(b.id)}
           contentContainerStyle={{ padding: 16, paddingBottom: 60 }}
+          keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -299,92 +304,123 @@ export const BatchStockScreen: React.FC = () => {
         />
 
         {/* Create / Edit Batch Modal */}
-        <Modal visible={modalVisible} transparent animationType="slide">
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: colors.text }]}>
-                  {editingBatch ? 'Edit Batch Stock' : 'Add New Batch Stock'}
-                </Text>
-                <TouchableOpacity onPress={() => setModalVisible(false)}>
-                  <Ionicons name="close" size={24} color={colors.textMuted} />
-                </TouchableOpacity>
+        <Modal
+          visible={modalVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <KeyboardAvoidingView
+            style={styles.modalAvoidingView}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
+            <View style={styles.modalOverlay}>
+              <TouchableOpacity
+                style={styles.modalBackdrop}
+                activeOpacity={1}
+                onPress={() => setModalVisible(false)}
+              />
+              <View
+                style={[
+                  styles.modalBox,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    paddingBottom: Math.max(insets.bottom, 16) + 16,
+                  },
+                ]}
+              >
+                <View style={styles.modalHeader}>
+                  <Text style={[styles.modalTitle, { color: colors.text }]}>
+                    {editingBatch ? 'Edit Batch Stock' : 'Add New Batch Stock'}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => setModalVisible(false)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="close" size={24} color={colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={false}
+                >
+                  {!editingBatch && (
+                    <Select
+                      label="Select Item *"
+                      value={selectedItemId}
+                      onChange={(val) => {
+                        setSelectedItemId(val);
+                        const it = items.find((x) => x.id === val);
+                        if (it) {
+                          setPurchasePrice(String(it.purchase_price));
+                          setMrp(String(it.sale_price));
+                        }
+                      }}
+                      options={items.map((it) => ({ label: it.name, value: it.id }))}
+                    />
+                  )}
+
+                  <Input
+                    label="Batch Number *"
+                    value={batchNo}
+                    onChangeText={setBatchNo}
+                    placeholder="e.g. B-101"
+                    autoFocus
+                  />
+
+                  <View style={styles.grid2}>
+                    <DatePickerField
+                      label="Mfg Date"
+                      value={mfgDate}
+                      onChange={setMfgDate}
+                      allowClear
+                      containerStyle={{ flex: 1 }}
+                    />
+                    <DatePickerField
+                      label="Expiry Date"
+                      value={expiryDate}
+                      onChange={setExpiryDate}
+                      allowClear
+                      containerStyle={{ flex: 1 }}
+                    />
+                  </View>
+
+                  <View style={styles.grid3}>
+                    <Input
+                      label="Stock Qty"
+                      value={qty}
+                      onChangeText={setQty}
+                      keyboardType="numeric"
+                      containerStyle={{ flex: 1 }}
+                    />
+                    <Input
+                      label="Cost Price"
+                      value={purchasePrice}
+                      onChangeText={setPurchasePrice}
+                      keyboardType="numeric"
+                      containerStyle={{ flex: 1 }}
+                    />
+                    <Input
+                      label="MRP"
+                      value={mrp}
+                      onChangeText={setMrp}
+                      keyboardType="numeric"
+                      containerStyle={{ flex: 1 }}
+                    />
+                  </View>
+
+                  <Button
+                    title={editingBatch ? 'Save Changes' : 'Create Batch'}
+                    onPress={handleSave}
+                    loading={loading}
+                    style={{ marginTop: 12 }}
+                  />
+                </ScrollView>
               </View>
-
-              <ScrollView>
-                {!editingBatch && (
-                  <Select
-                    label="Select Item *"
-                    value={selectedItemId}
-                    onChange={(val) => {
-                      setSelectedItemId(val);
-                      const it = items.find((x) => x.id === val);
-                      if (it) {
-                        setPurchasePrice(String(it.purchase_price));
-                        setMrp(String(it.sale_price));
-                      }
-                    }}
-                    options={items.map((it) => ({ label: it.name, value: it.id }))}
-                  />
-                )}
-
-                <Input
-                  label="Batch Number *"
-                  value={batchNo}
-                  onChangeText={setBatchNo}
-                  placeholder="e.g. B-101"
-                />
-
-                <View style={styles.grid2}>
-                  <DatePickerField
-                    label="Mfg Date"
-                    value={mfgDate}
-                    onChange={setMfgDate}
-                    allowClear
-                    containerStyle={{ flex: 1 }}
-                  />
-                  <DatePickerField
-                    label="Expiry Date"
-                    value={expiryDate}
-                    onChange={setExpiryDate}
-                    allowClear
-                    containerStyle={{ flex: 1 }}
-                  />
-                </View>
-
-                <View style={styles.grid3}>
-                  <Input
-                    label="Stock Qty"
-                    value={qty}
-                    onChangeText={setQty}
-                    keyboardType="numeric"
-                    containerStyle={{ flex: 1 }}
-                  />
-                  <Input
-                    label="Cost Price"
-                    value={purchasePrice}
-                    onChangeText={setPurchasePrice}
-                    keyboardType="numeric"
-                    containerStyle={{ flex: 1 }}
-                  />
-                  <Input
-                    label="MRP"
-                    value={mrp}
-                    onChangeText={setMrp}
-                    keyboardType="numeric"
-                    containerStyle={{ flex: 1 }}
-                  />
-                </View>
-
-                <Button
-                  title={editingBatch ? 'Save Changes' : 'Create Batch'}
-                  onPress={handleSave}
-                  loading={loading}
-                  style={{ marginTop: 12 }}
-                />
-              </ScrollView>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
       </View>
     </ScreenWrapper>
@@ -472,10 +508,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
+  modalAvoidingView: {
+    flex: 1,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
   },
   modalBox: {
     borderTopLeftRadius: 20,
@@ -483,6 +525,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 20,
     maxHeight: '85%',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 12,
+      },
+    }),
   },
   modalHeader: {
     flexDirection: 'row',

@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   Alert,
 } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
@@ -18,7 +17,6 @@ import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { formatCurrency, formatDate } from '../../utils/formatters';
-import { Ionicons } from '@expo/vector-icons';
 
 export const InvoiceDetailScreen: React.FC<{ navigation: any; route: any }> = ({
   navigation,
@@ -48,7 +46,7 @@ export const InvoiceDetailScreen: React.FC<{ navigation: any; route: any }> = ({
 
   if (!invoice && !loading) {
     return (
-      <ScreenWrapper>
+      <ScreenWrapper title="Voucher Details">
         <View style={styles.center}>
           <Text style={{ color: colors.text }}>Invoice not found</Text>
         </View>
@@ -116,8 +114,15 @@ export const InvoiceDetailScreen: React.FC<{ navigation: any; route: any }> = ({
   };
 
   return (
-    <ScreenWrapper>
-      <ScrollView contentContainerStyle={styles.container}>
+    <ScreenWrapper
+      title={invoice?.invoice_no || 'Voucher Details'}
+      subtitle={invoice ? `${(invoice.type || 'sale').toUpperCase()} • ${formatDate(invoice.date)}` : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         {/* Top Header Card */}
         <Card>
           <View style={styles.topRow}>

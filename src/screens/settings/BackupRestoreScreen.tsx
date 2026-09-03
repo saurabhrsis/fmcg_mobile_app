@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   Alert,
 } from 'react-native';
 import * as Sharing from 'expo-sharing';
@@ -112,8 +111,12 @@ export const BackupRestoreScreen: React.FC = () => {
   };
 
   return (
-    <ScreenWrapper>
-      <ScrollView contentContainerStyle={styles.container}>
+    <ScreenWrapper title="Backup & Restore" subtitle="Offline SQLite database safety">
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={[styles.title, { color: colors.text }]}>Data Safety & Backup</Text>
         <Text style={{ fontSize: 11, color: colors.textMuted, marginBottom: 12 }}>
           Offline-first SQLite database management & migration

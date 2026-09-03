@@ -1,9 +1,18 @@
-import React from 'react';
-import { View, Text, TextInput, StyleSheet, TextInputProps, ViewStyle } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  TextInputProps,
+  ViewStyle,
+  NativeSyntheticEvent,
+  TextInputFocusEventData,
+} from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 
-interface InputProps extends TextInputProps {
+export interface InputProps extends TextInputProps {
   label?: string;
   error?: string;
   icon?: keyof typeof Ionicons.glyphMap;
@@ -16,9 +25,28 @@ export const Input: React.FC<InputProps> = ({
   icon,
   containerStyle,
   style,
+  onFocus,
+  onBlur,
   ...rest
 }) => {
   const { colors } = useTheme();
+  const [isFocused, setIsFocused] = useState(false);
+
+  const handleFocus = (e: NativeSyntheticEvent<TextInputFocusEventData>) => {
+    setIsFocused(true);
+    onFocus?.(e);
+  };
+
+  const handleBlur = (e: NativeSyntheticEvent<TextInputFocusEventData>) => {
+    setIsFocused(false);
+    onBlur?.(e);
+  };
+
+  const borderColor = error
+    ? colors.palette.danger
+    : isFocused
+    ? colors.palette.primary
+    : colors.border;
 
   return (
     <View style={[styles.container, containerStyle]}>
@@ -28,7 +56,8 @@ export const Input: React.FC<InputProps> = ({
           styles.inputContainer,
           {
             backgroundColor: colors.inputBg,
-            borderColor: error ? colors.palette.danger : colors.border,
+            borderColor,
+            borderWidth: isFocused ? 1.5 : 1,
           },
         ]}
       >
@@ -36,12 +65,14 @@ export const Input: React.FC<InputProps> = ({
           <Ionicons
             name={icon}
             size={18}
-            color={colors.textMuted}
+            color={isFocused ? colors.palette.primary : colors.textMuted}
             style={styles.icon}
           />
         )}
         <TextInput
           placeholderTextColor={colors.textMuted}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           style={[
             styles.input,
             { color: colors.text },
@@ -67,7 +98,6 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 12,
     height: 44,

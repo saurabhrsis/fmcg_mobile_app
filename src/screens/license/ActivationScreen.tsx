@@ -11,17 +11,12 @@ import {
   Share,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
 import { useTheme } from '../../context/ThemeContext';
 import { useLicense } from '../../context/LicenseContext';
 import { TRIAL_DAYS } from '../../licensing/license';
 
-/**
- * Activation gate — shown when the free trial has ended (or a licence is
- * invalid / expired / needs activation) and the user chooses to enter a key.
- * Mirrors the desktop activation.html screen.
- */
 export const ActivationScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { colors } = useTheme();
   const { status, deviceId, activateKey } = useLicense();
@@ -60,8 +55,8 @@ export const ActivationScreen: React.FC<{ navigation: any }> = ({ navigation }) 
   const trialEnded = status?.state === 'trial-expired';
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <ScreenWrapper title="Activate License" subtitle="Unlock full billing access">
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View style={[styles.iconCircle, { backgroundColor: colors.palette.primary }]}>
             <Ionicons name="key" size={34} color="#FFF" />
@@ -113,7 +108,7 @@ export const ActivationScreen: React.FC<{ navigation: any }> = ({ navigation }) 
           </TouchableOpacity>
         </View>
 
-        {/* Device ID — needed for device-locked keys */}
+        {/* Device ID */}
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.cardTitle, { color: colors.palette.primary }]}>Your Device ID</Text>
           <Text style={[styles.hint, { color: colors.textSecondary }]}>
@@ -148,12 +143,12 @@ export const ActivationScreen: React.FC<{ navigation: any }> = ({ navigation }) 
           </TouchableOpacity>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </ScreenWrapper>
   );
 };
 
 const styles = StyleSheet.create({
-  content: { padding: 18, paddingBottom: 40 },
+  content: { padding: 18, paddingBottom: 60 },
   header: { alignItems: 'center', marginBottom: 20, marginTop: 10 },
   iconCircle: { width: 68, height: 68, borderRadius: 34, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 21, fontWeight: '800', marginTop: 14 },

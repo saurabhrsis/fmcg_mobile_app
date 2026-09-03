@@ -7,7 +7,11 @@ import {
   TouchableOpacity,
   Alert,
   Modal,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { itemService } from '../../services/itemService';
 import { Category } from '../../types';
@@ -21,6 +25,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 export const CategoryManagerScreen: React.FC = () => {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
@@ -92,11 +97,11 @@ export const CategoryManagerScreen: React.FC = () => {
   };
 
   return (
-    <ScreenWrapper>
+    <ScreenWrapper title="Category Hierarchy" subtitle="Product category tree">
       <View style={styles.container}>
         <View style={styles.headerRow}>
-          <View>
-            <Text style={[styles.title, { color: colors.text }]}>Category Hierarchy</Text>
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <Text style={[styles.title, { color: colors.text }]}>Categories</Text>
             <Text style={{ fontSize: 12, color: colors.textMuted }}>
               Multi-level tree structure for products
             </Text>
@@ -107,7 +112,8 @@ export const CategoryManagerScreen: React.FC = () => {
         <FlatList
           data={categories}
           keyExtractor={(c) => String(c.id)}
-          contentContainerStyle={{ padding: 16 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+          keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
             <EmptyState
               icon="folder-open-outline"
@@ -137,46 +143,79 @@ export const CategoryManagerScreen: React.FC = () => {
           )}
         />
 
-        {/* Modal */}
-        <Modal visible={modalVisible} transparent animationType="slide">
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: colors.text }]}>
-                  {editingCat ? 'Edit Category' : 'Create Category'}
-                </Text>
-                <TouchableOpacity onPress={() => setModalVisible(false)}>
-                  <Ionicons name="close" size={24} color={colors.textMuted} />
-                </TouchableOpacity>
-              </View>
-
-              <Input
-                label="Category Name *"
-                value={name}
-                onChangeText={setName}
-                placeholder="e.g. Soft Drinks, Dairy, Snacks"
+        {/* Add/Edit Modal */}
+        <Modal
+          visible={modalVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <KeyboardAvoidingView
+            style={styles.modalAvoidingView}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
+            <View style={styles.modalOverlay}>
+              <TouchableOpacity
+                style={styles.modalBackdrop}
+                activeOpacity={1}
+                onPress={() => setModalVisible(false)}
               />
-
-              <Select
-                label="Parent Category (Optional)"
-                value={parentId}
-                onChange={setParentId}
-                options={[
-                  { label: 'None (Top Level)', value: null },
-                  ...categories
-                    .filter((c) => !editingCat || c.id !== editingCat.id)
-                    .map((c) => ({ label: c.path || c.name, value: c.id })),
+              <View
+                style={[
+                  styles.modalBox,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    paddingBottom: Math.max(insets.bottom, 16) + 16,
+                  },
                 ]}
-              />
+              >
+                <View style={styles.modalHeader}>
+                  <Text style={[styles.modalTitle, { color: colors.text }]}>
+                    {editingCat ? 'Edit Category' : 'Create Category'}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => setModalVisible(false)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="close" size={24} color={colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
 
-              <Button
-                title={editingCat ? 'Save Changes' : 'Create Category'}
-                onPress={handleSave}
-                loading={loading}
-                style={{ marginTop: 12 }}
-              />
+                <ScrollView
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={false}
+                >
+                  <Input
+                    label="Category Name *"
+                    value={name}
+                    onChangeText={setName}
+                    placeholder="e.g. Soft Drinks, Dairy, Snacks"
+                    autoFocus
+                  />
+
+                  <Select
+                    label="Parent Category (Optional)"
+                    value={parentId}
+                    onChange={setParentId}
+                    options={[
+                      { label: 'None (Top Level)', value: null },
+                      ...categories
+                        .filter((c) => !editingCat || c.id !== editingCat.id)
+                        .map((c) => ({ label: c.path || c.name, value: c.id })),
+                    ]}
+                  />
+
+                  <Button
+                    title={editingCat ? 'Save Changes' : 'Create Category'}
+                    onPress={handleSave}
+                    loading={loading}
+                    style={{ marginTop: 12 }}
+                  />
+                </ScrollView>
+              </View>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
       </View>
     </ScreenWrapper>
@@ -213,16 +252,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
+  modalAvoidingView: {
+    flex: 1,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
   },
   modalBox: {
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     borderWidth: 1,
     padding: 20,
+    maxHeight: '85%',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 12,
+      },
+    }),
   },
   modalHeader: {
     flexDirection: 'row',

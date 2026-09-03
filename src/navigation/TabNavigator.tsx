@@ -1,4 +1,5 @@
 import React from 'react';
+import { StyleSheet, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
@@ -13,8 +14,10 @@ import { MoreHubScreen } from '../screens/more/MoreHubScreen';
 const Tab = createBottomTabNavigator();
 
 export const TabNavigator: React.FC = () => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+
+  const bottomInset = Math.max(insets.bottom, 6);
 
   return (
     <Tab.Navigator
@@ -24,15 +27,28 @@ export const TabNavigator: React.FC = () => {
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
-          height: 60 + insets.bottom,
-          paddingBottom: 8 + insets.bottom,
+          borderTopWidth: 1,
+          height: 56 + bottomInset,
+          paddingBottom: bottomInset,
           paddingTop: 6,
+          ...Platform.select({
+            ios: {
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: -2 },
+              shadowOpacity: isDark ? 0.3 : 0.06,
+              shadowRadius: 4,
+            },
+            android: {
+              elevation: 8,
+            },
+          }),
         },
         tabBarActiveTintColor: colors.palette.primary,
-        tabBarInactiveTintColor: colors.textMuted,
+        tabBarInactiveTintColor: isDark ? '#94a3b8' : '#64748b',
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600',
+          marginTop: 2,
         },
         tabBarIcon: ({ color, size, focused }) => {
           let iconName: keyof typeof Ionicons.glyphMap = 'home';

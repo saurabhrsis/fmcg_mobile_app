@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'rea
 import { useTheme } from '../../context/ThemeContext';
 import { useBusiness } from '../../context/BusinessContext';
 import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
-import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { exportService } from '../../services/exportService';
 import { Ionicons } from '@expo/vector-icons';
@@ -78,8 +77,12 @@ export const ReportsHomeScreen: React.FC<{ navigation: any }> = ({ navigation })
   ];
 
   return (
-    <ScreenWrapper>
-      <ScrollView contentContainerStyle={styles.container}>
+    <ScreenWrapper title="Reports & GST" subtitle="Tax registers, audit trails & financial reports">
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={[styles.title, { color: colors.text }]}>Reports & GST Intelligence</Text>
         <Text style={[styles.subtitle, { color: colors.textMuted }]}>
           Tax compliance, audit registers, stock valuation & financial statements

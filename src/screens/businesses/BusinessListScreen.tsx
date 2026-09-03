@@ -5,11 +5,9 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useBusiness } from '../../context/BusinessContext';
-import { Business } from '../../types';
 import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
 import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
@@ -18,13 +16,13 @@ import { Ionicons } from '@expo/vector-icons';
 
 export const BusinessListScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { colors } = useTheme();
-  const { businesses, activeBusiness, switchBusiness, refreshBusinesses } = useBusiness();
+  const { businesses, activeBusiness, switchBusiness } = useBusiness();
 
   return (
-    <ScreenWrapper>
+    <ScreenWrapper title="Registered Businesses" subtitle="Manage your firms & billing formats">
       <View style={styles.container}>
         <View style={styles.headerRow}>
-          <View>
+          <View style={{ flex: 1, marginRight: 10 }}>
             <Text style={[styles.title, { color: colors.text }]}>Businesses (Firms)</Text>
             <Text style={{ fontSize: 11, color: colors.textMuted }}>
               Manage multiple company profiles & billing formats
@@ -40,7 +38,8 @@ export const BusinessListScreen: React.FC<{ navigation: any }> = ({ navigation }
         <FlatList
           data={businesses}
           keyExtractor={(b) => String(b.id)}
-          contentContainerStyle={{ padding: 16 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 60 }}
+          keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => {
             const isActive = item.id === activeBusiness?.id;
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,6 @@ import { useBusiness } from '../../context/BusinessContext';
 import { ewayService } from '../../services/ewayService';
 import { EwayBill } from '../../types';
 import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
-import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
 import { EmptyState } from '../../components/common/EmptyState';
 import { formatCurrency, formatDate } from '../../utils/formatters';
@@ -49,10 +48,10 @@ export const EwayListScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
   };
 
   return (
-    <ScreenWrapper>
+    <ScreenWrapper title="E-Way Bills" subtitle="Transport & consignment register">
       <View style={styles.container}>
         <View style={styles.headerRow}>
-          <View>
+          <View style={{ flex: 1, marginRight: 10 }}>
             <Text style={[styles.title, { color: colors.text }]}>E-Way Bills</Text>
             <Text style={{ fontSize: 11, color: colors.textMuted }}>
               Transport documents for goods movement
@@ -70,6 +69,7 @@ export const EwayListScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
           data={ewayBills}
           keyExtractor={(e) => String(e.id)}
           contentContainerStyle={{ padding: 16, paddingBottom: 60 }}
+          keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

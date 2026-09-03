@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,6 @@ import { useBusiness } from '../../context/BusinessContext';
 import { paymentService } from '../../services/paymentService';
 import { Payment, PaymentType } from '../../types';
 import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
-import { Badge } from '../../components/common/Badge';
 import { EmptyState } from '../../components/common/EmptyState';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { useFocusEffect } from '@react-navigation/native';
@@ -51,7 +50,7 @@ export const PaymentListScreen: React.FC<{ navigation: any }> = ({ navigation })
   };
 
   return (
-    <ScreenWrapper>
+    <ScreenWrapper title="Payments & Receipts" subtitle="Transactions & payment logs">
       <View style={styles.container}>
         {/* Switcher Tab */}
         <View style={styles.tabBar}>
@@ -61,6 +60,8 @@ export const PaymentListScreen: React.FC<{ navigation: any }> = ({ navigation })
               {
                 backgroundColor:
                   activeTab === 'in' ? colors.palette.success : colors.surfaceSubtle,
+                borderColor: activeTab === 'in' ? colors.palette.success : colors.border,
+                borderWidth: 1,
               },
             ]}
             onPress={() => setActiveTab('in')}
@@ -81,6 +82,8 @@ export const PaymentListScreen: React.FC<{ navigation: any }> = ({ navigation })
               {
                 backgroundColor:
                   activeTab === 'out' ? colors.palette.danger : colors.surfaceSubtle,
+                borderColor: activeTab === 'out' ? colors.palette.danger : colors.border,
+                borderWidth: 1,
               },
             ]}
             onPress={() => setActiveTab('out')}
@@ -119,6 +122,7 @@ export const PaymentListScreen: React.FC<{ navigation: any }> = ({ navigation })
           data={payments}
           keyExtractor={(p) => String(p.id)}
           contentContainerStyle={{ padding: 16, paddingBottom: 60 }}
+          keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

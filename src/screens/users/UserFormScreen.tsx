@@ -124,8 +124,15 @@ export const UserFormScreen: React.FC<{ navigation: any; route: any }> = ({
   ];
 
   return (
-    <ScreenWrapper>
-      <ScrollView contentContainerStyle={styles.container}>
+    <ScreenWrapper
+      title={editId ? 'Edit Staff User' : 'Create Staff Operator'}
+      subtitle="Permissions & login credentials"
+    >
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={[styles.title, { color: colors.text }]}>
           {editId ? 'Edit Staff User & Permissions' : 'Create Staff Operator'}
         </Text>

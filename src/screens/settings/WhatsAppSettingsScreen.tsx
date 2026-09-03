@@ -25,8 +25,12 @@ export const WhatsAppSettingsScreen: React.FC = () => {
   };
 
   return (
-    <ScreenWrapper>
-      <ScrollView contentContainerStyle={styles.container}>
+    <ScreenWrapper title="WhatsApp Integration" subtitle="Instant bill sharing & payment reminders">
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={[styles.title, { color: colors.text }]}>WhatsApp Sharing & Alerts</Text>
         <Text style={{ fontSize: 11, color: colors.textMuted, marginBottom: 12 }}>
           Direct deep-link integration with WhatsApp Web and Mobile Apps

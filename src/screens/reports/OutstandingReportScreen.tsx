@@ -53,7 +53,6 @@ export const OutstandingReportScreen: React.FC<{ navigation: any }> = ({ navigat
     }
   };
 
-
   const handleExport = async () => {
     try {
       const sect = (title: string, list: Party[]) => ({
@@ -76,7 +75,7 @@ export const OutstandingReportScreen: React.FC<{ navigation: any }> = ({ navigat
   const totalAmount = list.reduce((acc, cur) => acc + (cur.balance || 0), 0);
 
   return (
-    <ScreenWrapper>
+    <ScreenWrapper title="Outstanding & Aging" subtitle="Customer receivables & supplier payables">
       <View style={styles.container}>
         {/* Tab Switcher */}
         <View style={styles.tabBar}>
@@ -127,7 +126,7 @@ export const OutstandingReportScreen: React.FC<{ navigation: any }> = ({ navigat
           size="sm"
           variant="outline"
           onPress={handleExport}
-          style={{ marginBottom: 10 }}
+          style={{ marginHorizontal: 16, marginBottom: 8 }}
         />
 
         {/* Total Outstanding Card */}
@@ -178,6 +177,7 @@ export const OutstandingReportScreen: React.FC<{ navigation: any }> = ({ navigat
           data={list}
           keyExtractor={(p) => String(p.id)}
           contentContainerStyle={{ padding: 16, paddingBottom: 60 }}
+          keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
             <EmptyState
               icon="checkmark-circle-outline"

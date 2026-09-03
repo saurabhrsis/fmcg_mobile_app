@@ -1,5 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, FlatList, ViewStyle } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Modal,
+  FlatList,
+  ViewStyle,
+  Platform,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -26,6 +36,7 @@ export const Select: React.FC<SelectProps> = ({
   containerStyle,
 }) => {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [modalVisible, setModalVisible] = useState(false);
 
   const selected = options.find((o) => o.value === value);
@@ -50,23 +61,42 @@ export const Select: React.FC<SelectProps> = ({
         <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
       </TouchableOpacity>
 
-      <Modal visible={modalVisible} transparent animationType="fade">
+      <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={() => setModalVisible(false)}>
         <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setModalVisible(false)}
         >
-          <View style={[styles.modalContent, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>{label || 'Select'}</Text>
+          <View
+            style={[
+              styles.modalContent,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                paddingBottom: Math.max(insets.bottom, 16) + 12,
+              },
+            ]}
+            onStartShouldSetResponder={() => true}
+          >
+            <View style={styles.modalHeaderRow}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{label || 'Select'}</Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeBtn}>
+                <Ionicons name="close" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
             <FlatList
               data={options}
               keyExtractor={(_, index) => String(index)}
+              keyboardShouldPersistTaps="handled"
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={[
                     styles.optionItem,
                     {
-                      backgroundColor: item.value === value ? colors.palette.primaryLight : 'transparent',
+                      backgroundColor:
+                        item.value === value
+                          ? colors.palette.primaryLight
+                          : 'transparent',
                     },
                   ]}
                   onPress={() => {
@@ -78,8 +108,11 @@ export const Select: React.FC<SelectProps> = ({
                     style={[
                       styles.optionText,
                       {
-                        color: item.value === value ? colors.palette.primaryDark : colors.text,
-                        fontWeight: item.value === value ? '700' : '400',
+                        color:
+                          item.value === value
+                            ? colors.palette.primaryDark
+                            : colors.text,
+                        fontWeight: item.value === value ? '700' : '500',
                       },
                     ]}
                   >
@@ -128,26 +161,47 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: '100%',
-    maxHeight: 400,
-    borderRadius: 12,
+    maxWidth: 480,
+    maxHeight: 450,
+    borderRadius: 16,
     borderWidth: 1,
     padding: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(150, 150, 150, 0.2)',
   },
   modalTitle: {
     fontSize: 16,
     fontWeight: '700',
-    marginBottom: 12,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+  },
+  closeBtn: {
+    padding: 4,
   },
   optionItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderRadius: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginVertical: 2,
   },
   optionText: {
     fontSize: 14,
