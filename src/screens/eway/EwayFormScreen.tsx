@@ -13,7 +13,9 @@ import { invoiceService } from '../../services/invoiceService';
 import { Invoice } from '../../types';
 import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
 import { Input } from '../../components/common/Input';
+import { DatePickerField } from '../../components/common/DatePickerField';
 import { Select } from '../../components/common/Select';
+import { StateSelect } from '../../components/common/StateSelect';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { getTodayIso, formatCurrency } from '../../utils/formatters';
@@ -181,10 +183,10 @@ export const EwayFormScreen: React.FC<{ navigation: any; route: any }> = ({
               placeholder="e.g. INV-0001"
               containerStyle={{ flex: 1 }}
             />
-            <Input
+            <DatePickerField
               label="Doc Date"
               value={docDate}
-              onChangeText={setDocDate}
+              onChange={setDocDate}
               containerStyle={{ flex: 1 }}
             />
           </View>
@@ -196,7 +198,7 @@ export const EwayFormScreen: React.FC<{ navigation: any; route: any }> = ({
           <Input label="From Name" value={fromName} onChangeText={setFromName} />
           <View style={styles.grid2}>
             <Input label="From GSTIN" value={fromGstin} onChangeText={setFromGstin} autoCapitalize="characters" containerStyle={{ flex: 1 }} />
-            <Input label="From State" value={fromState} onChangeText={setFromState} containerStyle={{ flex: 1 }} />
+            <StateSelect label="From State" value={fromState} onChange={(name) => setFromState(name)} containerStyle={{ flex: 1 }} />
           </View>
           <Input label="From Address" value={fromAddr} onChangeText={setFromAddr} />
           <View style={styles.grid2}>
@@ -211,7 +213,7 @@ export const EwayFormScreen: React.FC<{ navigation: any; route: any }> = ({
           <Input label="To Name *" value={toName} onChangeText={setToName} />
           <View style={styles.grid2}>
             <Input label="To GSTIN" value={toGstin} onChangeText={setToGstin} autoCapitalize="characters" containerStyle={{ flex: 1 }} />
-            <Input label="To State" value={toState} onChangeText={setToState} containerStyle={{ flex: 1 }} />
+            <StateSelect label="To State" value={toState} onChange={(name) => setToState(name)} containerStyle={{ flex: 1 }} />
           </View>
           <Input label="To Address" value={toAddr} onChangeText={setToAddr} />
           <View style={styles.grid2}>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -13,6 +14,7 @@ const Tab = createBottomTabNavigator();
 
 export const TabNavigator: React.FC = () => {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <Tab.Navigator
@@ -22,8 +24,8 @@ export const TabNavigator: React.FC = () => {
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
-          height: 60,
-          paddingBottom: 8,
+          height: 60 + insets.bottom,
+          paddingBottom: 8 + insets.bottom,
           paddingTop: 6,
         },
         tabBarActiveTintColor: colors.palette.primary,
@@ -57,17 +59,17 @@ export const TabNavigator: React.FC = () => {
       <Tab.Screen
         name="BillingTab"
         component={InvoiceListScreen}
-        options={{ tabBarLabel: 'Billing (F2)' }}
+        options={{ tabBarLabel: 'Billing' }}
       />
       <Tab.Screen
         name="InventoryTab"
         component={ItemListScreen}
-        options={{ tabBarLabel: 'Inventory (F6)' }}
+        options={{ tabBarLabel: 'Inventory' }}
       />
       <Tab.Screen
         name="PartiesTab"
         component={PartyListScreen}
-        options={{ tabBarLabel: 'Parties (F9)' }}
+        options={{ tabBarLabel: 'Parties' }}
       />
       <Tab.Screen
         name="MoreTab"

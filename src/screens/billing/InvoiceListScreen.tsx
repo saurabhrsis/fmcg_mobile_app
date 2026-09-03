@@ -97,8 +97,8 @@ export const InvoiceListScreen: React.FC<{ navigation: any; route: any }> = ({
   };
 
   const tabs = [
-    { key: 'sale', label: 'Sales (F2)' },
-    { key: 'purchase', label: 'Purchases (F3)' },
+    { key: 'sale', label: 'Sales' },
+    { key: 'purchase', label: 'Purchases' },
     { key: 'quotation', label: 'Quotations' },
     { key: 'credit', label: 'Credit Notes' },
     { key: 'debit', label: 'Debit Notes' },

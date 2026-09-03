@@ -2,6 +2,9 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TabNavigator } from './TabNavigator';
 
+// Notifications
+import { NotificationsScreen } from '../screens/notifications/NotificationsScreen';
+
 // Billing
 import { CreateInvoiceScreen } from '../screens/billing/CreateInvoiceScreen';
 import { InvoiceDetailScreen } from '../screens/billing/InvoiceDetailScreen';
@@ -51,6 +54,7 @@ import { ThemeSettingsScreen } from '../screens/settings/ThemeSettingsScreen';
 import { BackupRestoreScreen } from '../screens/settings/BackupRestoreScreen';
 import { DataImportScreen } from '../screens/settings/DataImportScreen';
 import { WhatsAppSettingsScreen } from '../screens/settings/WhatsAppSettingsScreen';
+import { DesktopSyncScreen } from '../screens/settings/DesktopSyncScreen';
 import { SupportScreen } from '../screens/settings/SupportScreen';
 
 const Stack = createNativeStackNavigator();
@@ -59,6 +63,9 @@ export const AppNavigator: React.FC = () => {
   return (
     <Stack.Navigator id="AppStack" screenOptions={{ headerShown: false }}>
       <Stack.Screen name="MainTabs" component={TabNavigator} />
+
+      {/* Notifications */}
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
 
       {/* Billing */}
       <Stack.Screen name="CreateInvoice" component={CreateInvoiceScreen} />
@@ -107,6 +114,7 @@ export const AppNavigator: React.FC = () => {
       <Stack.Screen name="FeaturesConfig" component={FeaturesConfigScreen} />
       <Stack.Screen name="ThemeSettings" component={ThemeSettingsScreen} />
       <Stack.Screen name="BackupRestore" component={BackupRestoreScreen} />
+      <Stack.Screen name="DesktopSync" component={DesktopSyncScreen} />
       <Stack.Screen name="DataImport" component={DataImportScreen} />
       <Stack.Screen name="WhatsAppSettings" component={WhatsAppSettingsScreen} />
       <Stack.Screen name="Support" component={SupportScreen} />

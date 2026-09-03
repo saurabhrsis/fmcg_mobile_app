@@ -21,6 +21,7 @@ import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
+import { DatePickerField } from '../../components/common/DatePickerField';
 import { Select } from '../../components/common/Select';
 import { EmptyState } from '../../components/common/EmptyState';
 import { formatCurrency, formatDate } from '../../utils/formatters';
@@ -335,18 +336,18 @@ export const BatchStockScreen: React.FC = () => {
                 />
 
                 <View style={styles.grid2}>
-                  <Input
-                    label="Mfg Date (YYYY-MM-DD)"
+                  <DatePickerField
+                    label="Mfg Date"
                     value={mfgDate}
-                    onChangeText={setMfgDate}
-                    placeholder="2026-01-01"
+                    onChange={setMfgDate}
+                    allowClear
                     containerStyle={{ flex: 1 }}
                   />
-                  <Input
-                    label="Expiry Date (YYYY-MM-DD)"
+                  <DatePickerField
+                    label="Expiry Date"
                     value={expiryDate}
-                    onChangeText={setExpiryDate}
-                    placeholder="2026-12-31"
+                    onChange={setExpiryDate}
+                    allowClear
                     containerStyle={{ flex: 1 }}
                   />
                 </View>

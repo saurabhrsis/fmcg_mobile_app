@@ -1,5 +1,4 @@
 import { simpleHash } from '../utils/hash';
-import { getDatabase } from './database';
 
 export async function seedInitialData(
   runAsync: (sql: string, params?: any[]) => Promise<any>,
@@ -234,10 +233,3 @@ export async function seedInitialData(
   );
 }
 
-export async function seedDatabase() {
-  const db = await getDatabase();
-  await seedInitialData(
-    (sql, params) => db.runAsync(sql, ...(params || [])),
-    (sql, params) => db.getFirstAsync(sql, ...(params || []))
-  );
-}

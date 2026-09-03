@@ -304,6 +304,7 @@ export interface Invoice {
   ack_date?: string;
   no_of_packets?: string;
   supplier_inv_no?: string;
+  gst_type?: 'auto' | 'intra' | 'inter';
   created_by?: number | null;
   created_at: string;
   items?: InvoiceItem[];

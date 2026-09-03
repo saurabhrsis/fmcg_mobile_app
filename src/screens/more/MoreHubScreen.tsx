@@ -33,21 +33,21 @@ export const MoreHubScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
       sub: 'Money in / out vouchers & cash logs',
       icon: 'cash-outline' as const,
       color: colors.palette.success,
-      action: () => navigation.navigate('Payments', { screen: 'PaymentList' }),
+      action: () => navigation.navigate('PaymentList'),
     },
     {
       title: 'E-Way Transport Bills',
       sub: 'Create & export GSTN EWB JSON slips',
       icon: 'car-outline' as const,
       color: colors.palette.primary,
-      action: () => navigation.navigate('Eway', { screen: 'EwayList' }),
+      action: () => navigation.navigate('EwayList'),
     },
     {
       title: 'GST & Financial Reports',
       sub: 'GSTR-1, registers, HSN summary, P&L',
       icon: 'document-text-outline' as const,
       color: colors.palette.accent,
-      action: () => navigation.navigate('Reports', { screen: 'ReportsHome' }),
+      action: () => navigation.navigate('ReportsHome'),
     },
     {
       title: 'Businesses (Multiple Firms)',
@@ -71,6 +71,13 @@ export const MoreHubScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
       action: () => navigation.navigate('DataImport'),
     },
     {
+      title: 'Desktop Portal Sync',
+      sub: 'Two-way sync & data exchange with desktop',
+      icon: 'sync-outline' as const,
+      color: colors.palette.success,
+      action: () => navigation.navigate('DesktopSync'),
+    },
+    {
       title: 'Database Backup & Restore',
       sub: 'Offline JSON backup, restore & data wipe',
       icon: 'shield-checkmark-outline' as const,
@@ -78,7 +85,7 @@ export const MoreHubScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
       action: () => navigation.navigate('BackupRestore'),
     },
     {
-      title: 'Feature Config (F12 Toggles)',
+      title: 'Feature Config & Toggles',
       sub: 'Negative stock, 3-tier discounts, serials',
       icon: 'options-outline' as const,
       color: colors.palette.primary,
@@ -100,7 +107,7 @@ export const MoreHubScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
     },
     {
       title: 'Help & License Support',
-      sub: 'Documentation, shortcuts & contact',
+      sub: 'Documentation & contact',
       icon: 'help-circle-outline' as const,
       color: colors.palette.primary,
       action: () => navigation.navigate('Support'),

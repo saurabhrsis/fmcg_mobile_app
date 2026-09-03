@@ -15,6 +15,10 @@ export const authService = {
     sec_question: string;
     sec_answer: string;
   }): Promise<User> {
+    const exists = await queryOne('SELECT 1 FROM users WHERE username = ?', [data.username.trim()]);
+    if (exists) {
+      throw new Error('Username is already taken. Please choose another.');
+    }
     const hash = simpleHash(data.password);
     const ansHash = simpleHash(data.sec_answer.trim().toLowerCase());
     const res = await execute(

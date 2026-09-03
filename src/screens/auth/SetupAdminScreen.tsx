@@ -6,6 +6,7 @@ import { authService } from '../../services/authService';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export const SetupAdminScreen: React.FC = () => {
   const { colors } = useTheme();
@@ -43,6 +44,7 @@ export const SetupAdminScreen: React.FC = () => {
   };
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
     <ScrollView contentContainerStyle={[styles.container, { backgroundColor: colors.bg }]}>
       <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={[styles.logoBox, { backgroundColor: colors.palette.primaryLight }]}>
@@ -110,6 +112,7 @@ export const SetupAdminScreen: React.FC = () => {
         />
       </View>
     </ScrollView>
+    </SafeAreaView>
   );
 };
 

@@ -1,12 +1,29 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
+import { useBusiness } from '../../context/BusinessContext';
 import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
 import { Card } from '../../components/common/Card';
+import { Button } from '../../components/common/Button';
+import { exportService } from '../../services/exportService';
 import { Ionicons } from '@expo/vector-icons';
 
 export const ReportsHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { colors } = useTheme();
+  const { activeBusiness } = useBusiness();
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportAll = async () => {
+    if (!activeBusiness) return;
+    setExporting(true);
+    try {
+      await exportService.exportAllReports(activeBusiness);
+    } catch (e: any) {
+      Alert.alert('Export Failed', e.message);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const reportSections = [
     {
@@ -66,6 +83,18 @@ export const ReportsHomeScreen: React.FC<{ navigation: any }> = ({ navigation })
         <Text style={[styles.title, { color: colors.text }]}>Reports & GST Intelligence</Text>
         <Text style={[styles.subtitle, { color: colors.textMuted }]}>
           Tax compliance, audit registers, stock valuation & financial statements
+        </Text>
+
+        <Button
+          title="Export All Reports (PDF Pack)"
+          icon="download-outline"
+          onPress={handleExportAll}
+          loading={exporting}
+          style={{ marginBottom: 14 }}
+        />
+        <Text style={{ fontSize: 10.5, color: colors.textMuted, marginTop: -8, marginBottom: 12 }}>
+          One PDF with FY summary, sales & purchase registers, outstanding lists and HSN summary.
+          Each report below also has its own CSV export.
         </Text>
 
         <View style={styles.grid}>

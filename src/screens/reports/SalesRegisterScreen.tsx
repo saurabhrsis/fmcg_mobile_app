@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, RefreshControl, Alert } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useBusiness } from '../../context/BusinessContext';
 import { reportService } from '../../services/reportService';
 import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
 import { Card } from '../../components/common/Card';
-import { Input } from '../../components/common/Input';
+import { DatePickerField } from '../../components/common/DatePickerField';
+import { Button } from '../../components/common/Button';
+import { exportService } from '../../services/exportService';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 
 export const SalesRegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
@@ -40,27 +42,53 @@ export const SalesRegisterScreen: React.FC<{ navigation: any }> = ({ navigation 
     setRefreshing(false);
   };
 
+
+  const handleExport = async () => {
+    try {
+      await exportService.exportCsv('Sales_Register' + (from ? `_${from}` : '') + (to ? `_${to}` : ''), [
+        {
+          title: 'Sales Register',
+          subtitle: `${activeBusiness?.name || ''}${from || to ? ` · ${from || 'start'} to ${to || 'today'}` : ''}`,
+          headers: ['Invoice No', 'Date', 'Party', 'GSTIN', 'Taxable', 'Tax', 'Total', 'Paid', 'Status'],
+          rows: data.rows.map((r: any) => [
+            r.invoice_no, r.date, r.party_name || 'Cash', r.party_gstin || '',
+            r.subtotal, r.tax_total, r.total, r.paid, r.status,
+          ]),
+          footer: ['TOTAL', '', '', '', data.summary.totalTaxable, data.summary.totalTax, data.summary.totalSales, '', ''],
+        },
+      ]);
+    } catch (e: any) {
+      Alert.alert('Export Failed', e.message);
+    }
+  };
+
   return (
     <ScreenWrapper>
       <View style={styles.container}>
         {/* Date Filter Card */}
         <Card style={styles.filterCard}>
           <View style={styles.grid2}>
-            <Input
+            <DatePickerField
               label="From Date"
               value={from}
-              onChangeText={setFrom}
-              placeholder="YYYY-MM-DD"
+              onChange={setFrom}
               containerStyle={{ flex: 1, marginBottom: 0 }}
             />
-            <Input
+            <DatePickerField
               label="To Date"
               value={to}
-              onChangeText={setTo}
-              placeholder="YYYY-MM-DD"
+              onChange={setTo}
               containerStyle={{ flex: 1, marginBottom: 0 }}
             />
           </View>
+          <Button
+            title="Export CSV"
+            icon="download-outline"
+            size="sm"
+            variant="outline"
+            onPress={handleExport}
+            style={{ marginTop: 10 }}
+          />
         </Card>
 
         {/* Summary Card */}

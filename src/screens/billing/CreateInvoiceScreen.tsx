@@ -17,12 +17,15 @@ import { partyService } from '../../services/partyService';
 import { batchService } from '../../services/batchService';
 import { invoiceService } from '../../services/invoiceService';
 import { serialService } from '../../services/serialService';
-import { Item, Party, InvoiceItem, InvoiceType, NoteKind, Batch, ItemUnit } from '../../types';
+import { businessService } from '../../services/businessService';
+import { Item, Party, InvoiceItem, InvoiceType, NoteKind, Batch, ItemUnit, CompanyFeatures } from '../../types';
 import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
+import { DatePickerField } from '../../components/common/DatePickerField';
+import { StateSelect } from '../../components/common/StateSelect';
 import { computeLineMath } from '../../utils/stock';
 import { formatCurrency, getTodayIso, round2 } from '../../utils/formatters';
 import { isInterState } from '../../utils/gstState';
@@ -50,16 +53,62 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
   const [extraDiscount, setExtraDiscount] = useState('0');
   const [paidAmount, setPaidAmount] = useState('0');
   const [notes, setNotes] = useState('');
-  const [poNo, setPoNo] = useState('');
-  const [ewayNo, setEwayNo] = useState('');
+
+  // Optional tax-invoice details (Ship-to, dispatch, order refs, e-Invoice…)
+  // Grouped in a collapsible section like the desktop edition. Nothing is mandatory.
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [companyFeatures, setCompanyFeatures] = useState<CompanyFeatures>({});
+
+  // Consignee (Ship To)
+  const [shipToSame, setShipToSame] = useState(false); // ship-to = customer address
   const [consigneeName, setConsigneeName] = useState('');
+  const [consigneeGstin, setConsigneeGstin] = useState('');
+  const [consigneeAddress, setConsigneeAddress] = useState('');
+  const [consigneeState, setConsigneeState] = useState('');
   const [placeOfSupply, setPlaceOfSupply] = useState('');
+
+  // GST tax type — 'auto' follows the state comparison (intra → CGST+SGST,
+  // inter → IGST). SEZ units (e.g. MIHAN Nagpur) can force IGST even when the
+  // customer & company are in the same state; 'intra' forces CGST+SGST.
+  const [gstType, setGstType] = useState<'auto' | 'intra' | 'inter'>('auto');
+
+  // Order & References
+  const [poNo, setPoNo] = useState('');
+  const [poDate, setPoDate] = useState('');
+  const [otherRef, setOtherRef] = useState('');
+  const [ewayNo, setEwayNo] = useState('');
+  const [payTerms, setPayTerms] = useState('');
+
+  // Dispatch / Transport
+  const [deliveryNote, setDeliveryNote] = useState('');
+  const [deliveryNoteDate, setDeliveryNoteDate] = useState('');
+  const [dispatchDoc, setDispatchDoc] = useState('');
+  const [dispatchedThrough, setDispatchedThrough] = useState('');
+  const [destination, setDestination] = useState('');
+  const [termsDelivery, setTermsDelivery] = useState('');
+  const [noOfPackets, setNoOfPackets] = useState('');
+
+  // e-Invoice (IRN)
+  const [irn, setIrn] = useState('');
+  const [ackNo, setAckNo] = useState('');
+  const [ackDate, setAckDate] = useState('');
 
   // Modals
   const [partyModal, setPartyModal] = useState(false);
   const [productModal, setProductModal] = useState(false);
   const [lineEditorModal, setLineEditorModal] = useState(false);
   const [editingLineIndex, setEditingLineIndex] = useState<number | null>(null);
+
+  // Party search & inline quick-add (create a new customer/supplier without
+  // leaving the voucher screen).
+  const [partySearch, setPartySearch] = useState('');
+  const [addingParty, setAddingParty] = useState(false);
+  const [newPartyName, setNewPartyName] = useState('');
+  const [newPartyPhone, setNewPartyPhone] = useState('');
+  const [newPartyGstin, setNewPartyGstin] = useState('');
+  const [newPartyState, setNewPartyState] = useState('');
+  const [newPartyAddress, setNewPartyAddress] = useState('');
+  const [savingParty, setSavingParty] = useState(false);
 
   // Active editing line state
   const [currentLine, setCurrentLine] = useState<Partial<InvoiceItem>>({
@@ -90,6 +139,10 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
 
       const allItems = await itemService.getAllItems(activeBusiness.id);
       setItemsList(allItems);
+
+      // Which optional bill-detail groups are enabled (Feature Config screen).
+      const feats = await businessService.getCompanyFeatures();
+      setCompanyFeatures(feats);
     })();
   }, [activeBusiness, type, noteKind]);
 
@@ -107,6 +160,17 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
 
   const extraDiscNum = Number(extraDiscount) || 0;
   const grandTotal = Math.max(0, round2(totalGross - extraDiscNum));
+
+  // What would 'Auto' resolve to for the current party / ship-to / place of
+  // supply? Used for the chip hint and the CGST/SGST vs IGST breakdown.
+  const autoInter = isInterState(activeBusiness, {
+    party_state: selectedParty?.state,
+    party_gstin: selectedParty?.gstin,
+    place_of_supply: placeOfSupply,
+    consignee_state: shipToSame ? '' : consigneeState,
+    consignee_gstin: shipToSame ? '' : consigneeGstin,
+  });
+  const effectiveInter = gstType === 'inter' ? true : gstType === 'intra' ? false : autoInter;
 
   const handleSelectProduct = async (product: Item) => {
     setProductModal(false);
@@ -175,6 +239,21 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
 
     setLoading(true);
     try {
+      // Ship To = customer's own address when the checkbox is ticked.
+      const shipTo = shipToSame && selectedParty
+        ? {
+            consignee_name: selectedParty.name,
+            consignee_gstin: selectedParty.gstin || '',
+            consignee_address: selectedParty.address || '',
+            consignee_state: selectedParty.state || '',
+          }
+        : {
+            consignee_name: consigneeName,
+            consignee_gstin: consigneeGstin,
+            consignee_address: consigneeAddress,
+            consignee_state: consigneeState,
+          };
+
       const inv = await invoiceService.createInvoice(
         activeBusiness!.id,
         {
@@ -186,10 +265,24 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
           discount: extraDiscNum,
           paid: Number(paidAmount) || 0,
           notes,
-          po_no: poNo,
-          eway_no: ewayNo,
-          consignee_name: consigneeName,
+          ...shipTo,
           place_of_supply: placeOfSupply,
+          gst_type: gstType,
+          po_no: poNo,
+          po_date: poDate,
+          other_ref: otherRef,
+          eway_no: ewayNo,
+          pay_terms: payTerms,
+          delivery_note: deliveryNote,
+          delivery_note_date: deliveryNoteDate,
+          dispatch_doc: dispatchDoc,
+          dispatched_through: dispatchedThrough,
+          destination,
+          terms_delivery: termsDelivery,
+          no_of_packets: noOfPackets,
+          irn,
+          ack_no: ackNo,
+          ack_date: ackDate,
         },
         lineItems,
         false,
@@ -206,6 +299,77 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
       Alert.alert('Error Creating Voucher', e.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Feature toggles default ON when not configured (same as desktop).
+  const featOn = (k: keyof CompanyFeatures) =>
+    (companyFeatures as any)[k] === undefined ? true : !!(companyFeatures as any)[k];
+  const showConsignee = featOn('billConsignee');
+  const showOrderRef = featOn('billOrderRef');
+  const showDispatch = featOn('billDispatch');
+  const showEInvoice = featOn('billEInvoice');
+  const anyDetailGroup = showConsignee || showOrderRef || showDispatch || showEInvoice;
+
+  const detailFilledCount = [
+    shipToSame ? 'same-as-customer' : '',
+    ...(shipToSame ? [] : [consigneeName, consigneeGstin, consigneeAddress, consigneeState]),
+    placeOfSupply,
+    poNo, poDate, otherRef, ewayNo, payTerms,
+    deliveryNote, deliveryNoteDate, dispatchDoc, dispatchedThrough, destination, termsDelivery, noOfPackets,
+    irn, ackNo, ackDate,
+  ].filter((v) => v && String(v).trim()).length;
+
+  // Party helpers — search filter + inline creation.
+  const partyTypeNeeded = type === 'purchase' || noteKind === 'debit' ? 'supplier' : 'customer';
+  const partyTypeLabel = partyTypeNeeded === 'supplier' ? 'Supplier' : 'Customer';
+
+  const filteredParties = partySearch.trim()
+    ? parties.filter((p) => {
+        const q = partySearch.trim().toLowerCase();
+        return (
+          p.name.toLowerCase().includes(q) ||
+          (p.phone || '').toLowerCase().includes(q) ||
+          (p.gstin || '').toLowerCase().includes(q)
+        );
+      })
+    : parties;
+
+  const resetNewPartyForm = () => {
+    setAddingParty(false);
+    setNewPartyName('');
+    setNewPartyPhone('');
+    setNewPartyGstin('');
+    setNewPartyState('');
+    setNewPartyAddress('');
+  };
+
+  const handleQuickAddParty = async () => {
+    if (!newPartyName.trim()) {
+      Alert.alert('Name Required', `Please enter the ${partyTypeLabel.toLowerCase()} name`);
+      return;
+    }
+    setSavingParty(true);
+    try {
+      const created = await partyService.createParty({
+        name: newPartyName,
+        type: partyTypeNeeded,
+        phone: newPartyPhone,
+        gstin: newPartyGstin,
+        state: newPartyState,
+        address: newPartyAddress,
+      });
+      // Refresh the list, auto-select the new party and close the modal.
+      const pList = await partyService.getAllParties(partyTypeNeeded, undefined, activeBusiness!.id);
+      setParties(pList);
+      setSelectedParty(created);
+      resetNewPartyForm();
+      setPartySearch('');
+      setPartyModal(false);
+    } catch (e: any) {
+      Alert.alert('Could not add party', e.message);
+    } finally {
+      setSavingParty(false);
     }
   };
 
@@ -229,10 +393,10 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
               onChangeText={setInvoiceNo}
               containerStyle={{ flex: 1 }}
             />
-            <Input
-              label="Date (YYYY-MM-DD)"
+            <DatePickerField
+              label="Invoice Date"
               value={date}
-              onChangeText={setDate}
+              onChange={setDate}
               containerStyle={{ flex: 1 }}
             />
           </View>
@@ -260,6 +424,42 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
             </View>
             <Ionicons name="search" size={20} color={colors.palette.primary} />
           </TouchableOpacity>
+
+          {/* GST Tax Type — Auto / CGST+SGST / IGST (SEZ override) */}
+          <Text style={[styles.inputLabel, { color: colors.text, marginTop: 12 }]}>GST Tax Type</Text>
+          <View style={styles.gstTypeRow}>
+            {([
+              { key: 'auto', label: `Auto (${autoInter ? 'IGST' : 'CGST+SGST'})` },
+              { key: 'intra', label: 'CGST + SGST' },
+              { key: 'inter', label: 'IGST' },
+            ] as const).map((opt) => (
+              <TouchableOpacity
+                key={opt.key}
+                style={[
+                  styles.gstTypeChip,
+                  {
+                    backgroundColor: gstType === opt.key ? colors.palette.primary : colors.surfaceSubtle,
+                    borderColor: gstType === opt.key ? colors.palette.primary : colors.border,
+                  },
+                ]}
+                onPress={() => setGstType(opt.key)}
+              >
+                <Text
+                  style={{
+                    color: gstType === opt.key ? '#ffffff' : colors.text,
+                    fontSize: 12,
+                    fontWeight: '700',
+                  }}
+                >
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <Text style={{ fontSize: 10.5, color: colors.textMuted, marginTop: 6 }}>
+            Auto compares customer & company GST states. SEZ / MIHAN units charge IGST even within
+            the same state — select IGST to override.
+          </Text>
         </Card>
 
         {/* Line Items List */}
@@ -322,10 +522,25 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
             <Text style={{ fontWeight: '600', color: colors.text }}>{formatCurrency(subtotal)}</Text>
           </View>
 
-          <View style={styles.summaryRow}>
-            <Text style={{ color: colors.textMuted }}>Total Tax (GST):</Text>
-            <Text style={{ fontWeight: '600', color: colors.text }}>{formatCurrency(taxTotal)}</Text>
-          </View>
+          {effectiveInter ? (
+            <View style={styles.summaryRow}>
+              <Text style={{ color: colors.textMuted }}>
+                IGST{gstType === 'inter' ? ' (forced — SEZ/inter-state)' : ''}:
+              </Text>
+              <Text style={{ fontWeight: '600', color: colors.text }}>{formatCurrency(taxTotal)}</Text>
+            </View>
+          ) : (
+            <>
+              <View style={styles.summaryRow}>
+                <Text style={{ color: colors.textMuted }}>CGST:</Text>
+                <Text style={{ fontWeight: '600', color: colors.text }}>{formatCurrency(taxTotal / 2)}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={{ color: colors.textMuted }}>SGST:</Text>
+                <Text style={{ fontWeight: '600', color: colors.text }}>{formatCurrency(taxTotal / 2)}</Text>
+              </View>
+            </>
+          )}
 
           <View style={styles.summaryRow}>
             <Text style={{ color: colors.textMuted }}>Extra Discount (₹):</Text>
@@ -357,7 +572,7 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
           )}
         </Card>
 
-        {/* Notes & Optional Details Accordion */}
+        {/* Notes */}
         <Card>
           <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 10 }]}>Additional Information</Text>
           <Input
@@ -366,23 +581,162 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
             onChangeText={setNotes}
             placeholder="Optional remarks on bill..."
           />
-          <View style={styles.grid2}>
-            <Input
-              label="PO Number"
-              value={poNo}
-              onChangeText={setPoNo}
-              placeholder="e.g. PO-890"
-              containerStyle={{ flex: 1 }}
-            />
-            <Input
-              label="E-Way Bill No"
-              value={ewayNo}
-              onChangeText={setEwayNo}
-              placeholder="e.g. 121345678901"
-              containerStyle={{ flex: 1 }}
-            />
-          </View>
         </Card>
+
+        {/* Invoice Details — Ship To, Order Refs, Dispatch/Transport, e-Invoice */}
+        {anyDetailGroup && (
+          <Card>
+            <TouchableOpacity
+              style={styles.detailsToggle}
+              onPress={() => setDetailsOpen(!detailsOpen)}
+              activeOpacity={0.7}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                <Ionicons
+                  name={detailsOpen ? 'chevron-down' : 'chevron-forward'}
+                  size={18}
+                  color={colors.palette.primary}
+                />
+                <View style={{ marginLeft: 6, flex: 1 }}>
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>Invoice Details</Text>
+                  <Text style={{ fontSize: 11, color: colors.textMuted }}>
+                    Optional · Ship To, Dispatch, Order Refs, e-Way, e-Invoice
+                  </Text>
+                </View>
+              </View>
+              {detailFilledCount > 0 && (
+                <Badge label={`${detailFilledCount} filled`} variant="success" />
+              )}
+            </TouchableOpacity>
+
+            {detailsOpen && (
+              <View style={{ marginTop: 12 }}>
+                {/* Consignee (Ship To) */}
+                {showConsignee && (
+                  <View style={[styles.detailGroup, { borderColor: colors.border }]}>
+                    <View style={styles.detailGroupHead}>
+                      <Ionicons name="location-outline" size={15} color={colors.palette.primary} />
+                      <Text style={[styles.detailGroupTitle, { color: colors.text }]}>Consignee (Ship To)</Text>
+                    </View>
+
+                    {/* Same-as-customer checkbox */}
+                    <TouchableOpacity
+                      style={styles.checkboxRow}
+                      activeOpacity={0.7}
+                      onPress={() => setShipToSame(!shipToSame)}
+                    >
+                      <Ionicons
+                        name={shipToSame ? 'checkbox' : 'square-outline'}
+                        size={20}
+                        color={shipToSame ? colors.palette.primary : colors.textMuted}
+                      />
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text, flex: 1 }}>
+                        Same as customer (Bill To) address
+                      </Text>
+                    </TouchableOpacity>
+
+                    {shipToSame ? (
+                      <View style={[styles.shipToSameBox, { backgroundColor: colors.surfaceSubtle }]}>
+                        {selectedParty ? (
+                          <>
+                            <Text style={{ fontSize: 12.5, fontWeight: '700', color: colors.text }}>
+                              {selectedParty.name}
+                            </Text>
+                            <Text style={{ fontSize: 11.5, color: colors.textMuted, marginTop: 2 }}>
+                              {selectedParty.address || 'No address on record'}
+                              {selectedParty.state ? ` • ${selectedParty.state}` : ''}
+                            </Text>
+                            {selectedParty.gstin ? (
+                              <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 1 }}>
+                                GSTIN: {selectedParty.gstin}
+                              </Text>
+                            ) : null}
+                          </>
+                        ) : (
+                          <Text style={{ fontSize: 12, color: colors.textMuted }}>
+                            Select a party above — their address will be used as the ship-to address.
+                          </Text>
+                        )}
+                      </View>
+                    ) : (
+                      <>
+                        <View style={styles.grid2}>
+                          <Input label="Name" value={consigneeName} onChangeText={setConsigneeName} containerStyle={{ flex: 1 }} />
+                          <Input label="GSTIN" value={consigneeGstin} onChangeText={setConsigneeGstin} autoCapitalize="characters" maxLength={15} containerStyle={{ flex: 1 }} />
+                        </View>
+                        <Input label="Address" value={consigneeAddress} onChangeText={setConsigneeAddress} />
+                        <View style={styles.grid2}>
+                          <StateSelect label="State" value={consigneeState} onChange={(name) => setConsigneeState(name)} containerStyle={{ flex: 1 }} />
+                          <Input label="Place of Supply" value={placeOfSupply} onChangeText={setPlaceOfSupply} containerStyle={{ flex: 1 }} />
+                        </View>
+                      </>
+                    )}
+                  </View>
+                )}
+
+                {/* Order & References */}
+                {showOrderRef && (
+                  <View style={[styles.detailGroup, { borderColor: colors.border }]}>
+                    <View style={styles.detailGroupHead}>
+                      <Ionicons name="document-text-outline" size={15} color={colors.palette.primary} />
+                      <Text style={[styles.detailGroupTitle, { color: colors.text }]}>Order & References</Text>
+                    </View>
+                    <View style={styles.grid2}>
+                      <Input label="Buyer's Order No." value={poNo} onChangeText={setPoNo} placeholder="e.g. PO-890" containerStyle={{ flex: 1 }} />
+                      <DatePickerField label="Order Date" value={poDate} onChange={setPoDate} allowClear containerStyle={{ flex: 1 }} />
+                    </View>
+                    <View style={styles.grid2}>
+                      <Input label="Reference No. & Date" value={otherRef} onChangeText={setOtherRef} containerStyle={{ flex: 1 }} />
+                      <Input label="e-Way Bill No." value={ewayNo} onChangeText={setEwayNo} placeholder="12-digit EWB" keyboardType="numeric" containerStyle={{ flex: 1 }} />
+                    </View>
+                    <Input label="Mode / Terms of Payment" value={payTerms} onChangeText={setPayTerms} placeholder="e.g. 30 Days Credit / Immediate" />
+                  </View>
+                )}
+
+                {/* Dispatch / Transport */}
+                {showDispatch && (
+                  <View style={[styles.detailGroup, { borderColor: colors.border }]}>
+                    <View style={styles.detailGroupHead}>
+                      <Ionicons name="car-outline" size={15} color={colors.palette.primary} />
+                      <Text style={[styles.detailGroupTitle, { color: colors.text }]}>Dispatch / Transport</Text>
+                    </View>
+                    <View style={styles.grid2}>
+                      <Input label="Delivery Note" value={deliveryNote} onChangeText={setDeliveryNote} containerStyle={{ flex: 1 }} />
+                      <DatePickerField label="Delivery Note Date" value={deliveryNoteDate} onChange={setDeliveryNoteDate} allowClear containerStyle={{ flex: 1 }} />
+                    </View>
+                    <View style={styles.grid2}>
+                      <Input label="Dispatch Doc No." value={dispatchDoc} onChangeText={setDispatchDoc} containerStyle={{ flex: 1 }} />
+                      <Input label="Dispatched Through" value={dispatchedThrough} onChangeText={setDispatchedThrough} placeholder="e.g. Road / Courier" containerStyle={{ flex: 1 }} />
+                    </View>
+                    <View style={styles.grid2}>
+                      <Input label="Destination" value={destination} onChangeText={setDestination} containerStyle={{ flex: 1 }} />
+                      <Input label="Terms of Delivery" value={termsDelivery} onChangeText={setTermsDelivery} containerStyle={{ flex: 1 }} />
+                    </View>
+                    {featOn('billPackets') && (
+                      <Input label="No. of Packets" value={noOfPackets} onChangeText={setNoOfPackets} keyboardType="numeric" placeholder="e.g. 12" />
+                    )}
+                  </View>
+                )}
+
+                {/* e-Invoice (IRN) */}
+                {showEInvoice && (
+                  <View style={[styles.detailGroup, { borderColor: colors.border }]}>
+                    <View style={styles.detailGroupHead}>
+                      <Ionicons name="link-outline" size={15} color={colors.palette.primary} />
+                      <Text style={[styles.detailGroupTitle, { color: colors.text }]}>e-Invoice (IRN)</Text>
+                      <Text style={{ fontSize: 10, color: colors.textMuted }}>enter after generating on GST portal</Text>
+                    </View>
+                    <Input label="IRN" value={irn} onChangeText={setIrn} autoCapitalize="none" />
+                    <View style={styles.grid2}>
+                      <Input label="Ack No." value={ackNo} onChangeText={setAckNo} containerStyle={{ flex: 1 }} />
+                      <DatePickerField label="Ack Date" value={ackDate} onChange={setAckDate} allowClear containerStyle={{ flex: 1 }} />
+                    </View>
+                  </View>
+                )}
+              </View>
+            )}
+          </Card>
+        )}
 
         {/* Save Button */}
         <Button
@@ -393,40 +747,139 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
           style={{ marginTop: 8 }}
         />
 
-        {/* Party Picker Modal */}
+        {/* Party Picker Modal — search + quick-add */}
         <Modal visible={partyModal} transparent animationType="slide">
           <View style={styles.modalOverlay}>
-            <View style={[styles.modalBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={[styles.modalBox, { backgroundColor: colors.surface, borderColor: colors.border, maxHeight: '85%' }]}>
               <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: colors.text }]}>Select Party</Text>
-                <TouchableOpacity onPress={() => setPartyModal(false)}>
-                  <Ionicons name="close" size={24} color={colors.textMuted} />
+                <Text style={[styles.modalTitle, { color: colors.text }]}>
+                  {addingParty ? `New ${partyTypeLabel}` : `Select ${partyTypeLabel}`}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    if (addingParty) {
+                      resetNewPartyForm();
+                    } else {
+                      setPartySearch('');
+                      setPartyModal(false);
+                    }
+                  }}
+                >
+                  <Ionicons name={addingParty ? 'arrow-back' : 'close'} size={24} color={colors.textMuted} />
                 </TouchableOpacity>
               </View>
 
-              <FlatList
-                data={parties}
-                keyExtractor={(p) => String(p.id)}
-                renderItem={({ item }) => (
+              {addingParty ? (
+                /* Inline quick-add form — create the party without leaving the voucher */
+                <ScrollView keyboardShouldPersistTaps="handled">
+                  <Input
+                    label={`${partyTypeLabel} Name *`}
+                    value={newPartyName}
+                    onChangeText={setNewPartyName}
+                    placeholder={`e.g. ${partyTypeNeeded === 'supplier' ? 'Metro Traders' : 'Sunrise Supermarket'}`}
+                  />
+                  <View style={styles.grid2}>
+                    <Input
+                      label="Phone"
+                      value={newPartyPhone}
+                      onChangeText={setNewPartyPhone}
+                      keyboardType="phone-pad"
+                      placeholder="Mobile number"
+                      containerStyle={{ flex: 1 }}
+                    />
+                    <StateSelect
+                      label="State"
+                      value={newPartyState}
+                      onChange={(name) => setNewPartyState(name)}
+                      containerStyle={{ flex: 1 }}
+                    />
+                  </View>
+                  <Input
+                    label="GSTIN (Optional)"
+                    value={newPartyGstin}
+                    onChangeText={(t) => setNewPartyGstin(t.toUpperCase())}
+                    autoCapitalize="characters"
+                    maxLength={15}
+                    placeholder="15-digit GSTIN"
+                  />
+                  <Input
+                    label="Address (Optional)"
+                    value={newPartyAddress}
+                    onChangeText={setNewPartyAddress}
+                    placeholder="Billing address"
+                  />
+                  <Button
+                    title={`Save & Select ${partyTypeLabel}`}
+                    onPress={handleQuickAddParty}
+                    loading={savingParty}
+                    style={{ marginTop: 4 }}
+                  />
+                </ScrollView>
+              ) : (
+                <>
+                  {/* Search box */}
+                  <Input
+                    value={partySearch}
+                    onChangeText={setPartySearch}
+                    icon="search"
+                    placeholder={`Search ${partyTypeLabel.toLowerCase()} by name, phone or GSTIN...`}
+                    autoCapitalize="none"
+                  />
+
+                  {/* Quick-add button */}
                   <TouchableOpacity
-                    style={[styles.partyItem, { borderBottomColor: colors.border }]}
+                    style={[styles.addPartyBtn, { backgroundColor: colors.palette.primaryLight }]}
                     onPress={() => {
-                      setSelectedParty(item);
-                      setPartyModal(false);
+                      // Pre-fill the name with what the user was searching for.
+                      setNewPartyName(partySearch.trim());
+                      setAddingParty(true);
                     }}
                   >
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.partyItemName, { color: colors.text }]}>{item.name}</Text>
-                      <Text style={{ fontSize: 11, color: colors.textMuted }}>
-                        {item.phone || 'No phone'} • {item.state || 'India'}
-                      </Text>
-                    </View>
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: colors.palette.primary }}>
-                      {formatCurrency(item.balance || 0)}
+                    <Ionicons name="person-add" size={16} color={colors.palette.primaryDark} />
+                    <Text style={{ color: colors.palette.primaryDark, fontWeight: '700', fontSize: 13 }}>
+                      + Add New {partyTypeLabel}
+                      {partySearch.trim() ? ` "${partySearch.trim()}"` : ''}
                     </Text>
                   </TouchableOpacity>
-                )}
-              />
+
+                  <FlatList
+                    data={filteredParties}
+                    keyExtractor={(p) => String(p.id)}
+                    keyboardShouldPersistTaps="handled"
+                    ListEmptyComponent={
+                      <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+                        <Ionicons name="people-outline" size={30} color={colors.textMuted} />
+                        <Text style={{ color: colors.textMuted, fontSize: 13, marginTop: 6 }}>
+                          {partySearch.trim()
+                            ? `No ${partyTypeLabel.toLowerCase()} matches "${partySearch.trim()}"`
+                            : `No ${partyTypeLabel.toLowerCase()}s yet — add one above`}
+                        </Text>
+                      </View>
+                    }
+                    renderItem={({ item }) => (
+                      <TouchableOpacity
+                        style={[styles.partyItem, { borderBottomColor: colors.border }]}
+                        onPress={() => {
+                          setSelectedParty(item);
+                          setPartySearch('');
+                          setPartyModal(false);
+                        }}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.partyItemName, { color: colors.text }]}>{item.name}</Text>
+                          <Text style={{ fontSize: 11, color: colors.textMuted }}>
+                            {item.phone || 'No phone'} • {item.state || 'India'}
+                            {item.gstin ? ` • ${item.gstin}` : ''}
+                          </Text>
+                        </View>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: colors.palette.primary }}>
+                          {formatCurrency(item.balance || 0)}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  />
+                </>
+              )}
             </View>
           </View>
         </Modal>
@@ -649,6 +1102,48 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
   },
+  detailsToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  detailGroup: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
+  },
+  detailGroupHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  detailGroupTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  gstTypeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  gstTypeChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1.5,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  shipToSameBox: {
+    borderRadius: 8,
+    padding: 10,
+  },
   emptyItemsBox: {
     borderWidth: 1.5,
     borderStyle: 'dashed',
@@ -730,6 +1225,15 @@ const styles = StyleSheet.create({
   partyItemName: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  addPartyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginBottom: 10,
   },
   unitChip: {
     paddingVertical: 6,

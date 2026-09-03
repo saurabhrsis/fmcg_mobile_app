@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useBusiness } from '../../context/BusinessContext';
 import { reportService } from '../../services/reportService';
 import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
 import { Card } from '../../components/common/Card';
+import { Button } from '../../components/common/Button';
+import { exportService } from '../../services/exportService';
 import { SearchBar } from '../../components/common/SearchBar';
 import { Badge } from '../../components/common/Badge';
 import { formatDate } from '../../utils/formatters';
@@ -33,6 +35,39 @@ export const TraceabilityScreen: React.FC = () => {
     }
   };
 
+
+  const handleExport = async () => {
+    if (results.serials.length === 0 && results.batches.length === 0) {
+      Alert.alert('Nothing to Export', 'Run a search first, then export the matched results.');
+      return;
+    }
+    try {
+      await exportService.exportCsv(`Traceability_${query.trim() || 'results'}`, [
+        {
+          title: 'Matched Serials',
+          subtitle: `Search: ${query.trim()}`,
+          headers: ['Serial No', 'Item', 'SKU', 'Batch', 'Status', 'Purchase Inv', 'Purchase Date', 'Supplier', 'Sale Inv', 'Sale Date', 'Customer'],
+          rows: results.serials.map((r: any) => [
+            r.serial_no, r.item_name, r.sku || '', r.batch_no || '', r.status || '',
+            r.purchase_invoice_no || '', r.purchase_date || '', r.supplier_name || '',
+            r.sale_invoice_no || '', r.sale_date || '', r.customer_name || '',
+          ]),
+        },
+        {
+          title: 'Matched Batches',
+          subtitle: `Search: ${query.trim()}`,
+          headers: ['Batch No', 'Item', 'SKU', 'Qty Available', 'Mfg Date', 'Expiry Date', 'Purchase Price', 'MRP'],
+          rows: results.batches.map((b: any) => [
+            b.batch_no, b.item_name, b.sku || '', b.qty_available, b.mfg_date || '', b.expiry_date || '',
+            b.purchase_price, b.mrp || '',
+          ]),
+        },
+      ]);
+    } catch (e: any) {
+      Alert.alert('Export Failed', e.message);
+    }
+  };
+
   return (
     <ScreenWrapper>
       <ScrollView contentContainerStyle={styles.container}>
@@ -46,6 +81,17 @@ export const TraceabilityScreen: React.FC = () => {
           onChangeText={handleSearch}
           placeholder="Scan or type serial no, batch no, product..."
         />
+
+        {(results.serials.length > 0 || results.batches.length > 0) && (
+          <Button
+            title="Export Results CSV"
+            icon="download-outline"
+            size="sm"
+            variant="outline"
+            onPress={handleExport}
+            style={{ marginBottom: 12 }}
+          />
+        )}
 
         {/* Serials Audit Trail */}
         {results.serials.length > 0 && (

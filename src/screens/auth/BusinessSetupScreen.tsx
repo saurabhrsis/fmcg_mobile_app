@@ -13,7 +13,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useBusiness } from '../../context/BusinessContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
-import { seedDatabase } from '../../db/seed';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { seedDatabase } from '../../db/database';
 
 export const BusinessSetupScreen: React.FC = () => {
   const { checkSetupStatus, login } = useAuth();
@@ -82,6 +83,7 @@ export const BusinessSetupScreen: React.FC = () => {
   };
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <View style={[styles.iconCircle, { backgroundColor: colors.palette.primary }]}>
@@ -246,6 +248,7 @@ export const BusinessSetupScreen: React.FC = () => {
       </TouchableOpacity>
       <View style={{ height: 40 }} />
     </ScrollView>
+    </SafeAreaView>
   );
 };
 
