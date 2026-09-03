@@ -312,7 +312,7 @@ export const BatchStockScreen: React.FC = () => {
         >
           <KeyboardAvoidingView
             style={styles.modalAvoidingView}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           >
             <View style={styles.modalOverlay}>
               <TouchableOpacity
