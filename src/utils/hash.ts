@@ -12,11 +12,8 @@ export function simpleHash(str: string): string {
 
 export function verifyHash(plain: string, hash: string): boolean {
   if (!hash) return false;
-  // If desktop bcrypt hash is present ($2a$... or $2b$...)
-  if (hash.startsWith('$2a$') || hash.startsWith('$2b$')) {
-    // For demo seed / legacy desktop compatibility
-    if (plain === 'admin123' || plain === 'demo' || plain === '123456') return true;
-    return false;
-  }
+  // Desktop bcrypt hashes ($2a$/$2b$) cannot be verified on-device; such users
+  // must reset their password through the security question flow.
+  if (hash.startsWith('$2a$') || hash.startsWith('$2b$')) return false;
   return simpleHash(plain) === hash || hash === plain;
 }

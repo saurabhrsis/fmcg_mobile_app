@@ -5,6 +5,7 @@ import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { BusinessProvider } from './src/context/BusinessContext';
 import { AuthProvider } from './src/context/AuthContext';
 import { FeaturesProvider } from './src/context/FeaturesContext';
+import { LicenseProvider } from './src/context/LicenseContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
 
 const AppContent: React.FC = () => {
@@ -25,7 +26,9 @@ export default function App() {
         <BusinessProvider>
           <AuthProvider>
             <FeaturesProvider>
-              <AppContent />
+              <LicenseProvider>
+                <AppContent />
+              </LicenseProvider>
             </FeaturesProvider>
           </AuthProvider>
         </BusinessProvider>

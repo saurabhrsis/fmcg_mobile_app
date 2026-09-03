@@ -25,12 +25,25 @@ Welcome to the **FMCG Mobile ERP Suite** (React Native Expo 54 + SQLite). This m
 ## 1. Getting Started & Sign In
 
 ### 1.1 Initial Launch
-- On the first app launch, you can use the **Quick Login** options or enter your credentials.
-- **Default Accounts**:
-  - **Admin**: Username: `admin` | Password: `admin123`
-  - **Cashier**: Username: `cashier` | Password: `cashier123`
-  - **Manager**: Username: `manager` | Password: `mgr123`
-- **Reset & Load Demo Data**: Tap the button on the login card to populate realistic FMCG sample records (Biscuits, Soft Drinks, Shampoo, Dairy, FEFO batches, customers, and invoices).
+The app ships with **no demo data and no default accounts** — you start with a clean database.
+
+- **Register**: On first launch the app opens the **Register** screen. Create your admin
+  account (name, username, password, security question) and your **business/firm profile**
+  (trade name, GSTIN, phone, address, state) in one step. You are signed in automatically.
+- **Login**: Once an account exists, the app opens the **Login** screen. Use
+  **Forgot Password?** to reset via your security question.
+- **Free Trial**: Every fresh install includes a **7-day free trial** with all features
+  unlocked. A status strip at the top of the app shows the days remaining.
+
+### 1.2 Licensing & Activation
+- Go to **More → License & Subscription** to see trial/licence status, plan, expiry and your
+  **Device ID**.
+- When the trial ends (or a paid licence expires), the app switches to **read-only mode**:
+  you can still view, search, print and back up data, but cannot create or edit invoices,
+  items, parties, payments or e-way bills.
+- Tap **Enter License Key** and paste the key issued by the RightServe licensing portal — the
+  same portal that issues keys for the FMCG desktop software. Keys are digitally signed and
+  verified **offline**; internet is needed only once, at activation of an online key.
 
 ---
 

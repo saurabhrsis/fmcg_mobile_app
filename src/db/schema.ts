@@ -1,4 +1,11 @@
 export const SCHEMA_SQL = `
+-- Key/value store for app-level metadata: device id, license key, activation
+-- seal, free-trial start date and the anti-rollback clock.
+CREATE TABLE IF NOT EXISTS app_meta (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL DEFAULT ''
+);
+
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
@@ -16,13 +23,13 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS company (
   id INTEGER PRIMARY KEY CHECK (id = 1),
-  name TEXT NOT NULL DEFAULT 'Sharma FMCG Distributors',
-  gstin TEXT DEFAULT '07ABCDE1234F1Z5',
-  phone TEXT DEFAULT '9876543210',
-  email TEXT DEFAULT 'contact@sharmafmcg.com',
-  address TEXT DEFAULT '12 Market Road, New Delhi',
-  state TEXT DEFAULT 'Delhi',
-  state_code TEXT DEFAULT '07',
+  name TEXT NOT NULL DEFAULT '',
+  gstin TEXT DEFAULT '',
+  phone TEXT DEFAULT '',
+  email TEXT DEFAULT '',
+  address TEXT DEFAULT '',
+  state TEXT DEFAULT '',
+  state_code TEXT DEFAULT '',
   invoice_prefix TEXT DEFAULT 'INV',
   terms TEXT DEFAULT 'Goods once sold will not be taken back.',
   features TEXT DEFAULT '{}',
@@ -32,13 +39,13 @@ CREATE TABLE IF NOT EXISTS company (
 
 CREATE TABLE IF NOT EXISTS businesses (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL DEFAULT 'Sharma FMCG Distributors',
-  gstin TEXT DEFAULT '07ABCDE1234F1Z5',
-  phone TEXT DEFAULT '9876543210',
-  email TEXT DEFAULT 'contact@sharmafmcg.com',
-  address TEXT DEFAULT '12 Market Road, New Delhi',
-  state TEXT DEFAULT 'Delhi',
-  state_code TEXT DEFAULT '07',
+  name TEXT NOT NULL DEFAULT '',
+  gstin TEXT DEFAULT '',
+  phone TEXT DEFAULT '',
+  email TEXT DEFAULT '',
+  address TEXT DEFAULT '',
+  state TEXT DEFAULT '',
+  state_code TEXT DEFAULT '',
   invoice_prefix TEXT DEFAULT 'INV',
   terms TEXT DEFAULT 'Goods once sold will not be taken back.',
   fy_start_month INTEGER NOT NULL DEFAULT 4,
@@ -47,17 +54,17 @@ CREATE TABLE IF NOT EXISTS businesses (
   logo TEXT DEFAULT '',
   signature TEXT DEFAULT '',
   stamp TEXT DEFAULT '',
-  bank_name TEXT DEFAULT 'HDFC Bank',
-  bank_account TEXT DEFAULT '50200012345678',
-  bank_ifsc TEXT DEFAULT 'HDFC0001234',
-  bank_branch TEXT DEFAULT 'Connaught Place, New Delhi',
-  account_holder TEXT DEFAULT 'Sharma FMCG Distributors',
-  upi_id TEXT DEFAULT 'sharmafmcg@okhdfcbank',
-  pan TEXT DEFAULT 'ABCDE1234F',
+  bank_name TEXT DEFAULT '',
+  bank_account TEXT DEFAULT '',
+  bank_ifsc TEXT DEFAULT '',
+  bank_branch TEXT DEFAULT '',
+  account_holder TEXT DEFAULT '',
+  upi_id TEXT DEFAULT '',
+  pan TEXT DEFAULT '',
   udyam TEXT DEFAULT '',
   cin TEXT DEFAULT '',
   qr_image TEXT DEFAULT '',
-  fssai TEXT DEFAULT '10019011000123',
+  fssai TEXT DEFAULT '',
   bill_number_start INTEGER NOT NULL DEFAULT 1,
   bill_terms TEXT DEFAULT '',
   bill_format TEXT NOT NULL DEFAULT 'classic',

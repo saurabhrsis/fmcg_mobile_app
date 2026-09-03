@@ -7,6 +7,7 @@ import {
   Alert,
 } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
+import { useLicense } from '../../context/LicenseContext';
 import { useBusiness } from '../../context/BusinessContext';
 import { partyService } from '../../services/partyService';
 import { lookupService } from '../../services/lookupService';
@@ -22,6 +23,7 @@ export const PartyFormScreen: React.FC<{ navigation: any; route: any }> = ({
   route,
 }) => {
   const { colors } = useTheme();
+  const { ensureWritable } = useLicense();
   const { activeBusiness } = useBusiness();
   const editId = route.params?.id;
   const initialType = route.params?.type || 'customer';
@@ -66,6 +68,12 @@ export const PartyFormScreen: React.FC<{ navigation: any; route: any }> = ({
   };
 
   const handleSave = async () => {
+    // Licensing gate: trial expired / license expired => read-only mode.
+    const gate = ensureWritable();
+    if (!gate.allowed) {
+      Alert.alert('Read-Only Mode', gate.reason || 'Your license is not active.');
+      return;
+    }
     if (!name.trim()) {
       Alert.alert('Validation Error', 'Party Name is required');
       return;

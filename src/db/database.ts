@@ -1,6 +1,5 @@
 import * as SQLite from 'expo-sqlite';
 import { SCHEMA_SQL } from './schema';
-import { seedInitialData } from './seed';
 
 let dbInstance: SQLite.SQLiteDatabase | null = null;
 let initPromise: Promise<SQLite.SQLiteDatabase> | null = null;
@@ -38,12 +37,6 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
         }
       }
 
-      // Seed initial demo data
-      await seedInitialData(
-        (sql, params) => db.runAsync(sql, ...(params || [])),
-        (sql, params) => db.getFirstAsync(sql, ...(params || []))
-      );
-
       return db;
     } catch (err) {
       console.error('Failed to initialize database:', err);
@@ -77,12 +70,4 @@ export async function runTransaction<T>(callback: (txDb: SQLite.SQLiteDatabase) 
     result = await callback(db);
   });
   return result as T;
-}
-
-export async function seedDatabase() {
-  const db = await getDatabase();
-  await seedInitialData(
-    (sql, params) => db.runAsync(sql, ...(params || [])),
-    (sql, params) => db.getFirstAsync(sql, ...(params || []))
-  );
 }

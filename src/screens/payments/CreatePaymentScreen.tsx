@@ -7,6 +7,7 @@ import {
   Alert,
 } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
+import { useLicense } from '../../context/LicenseContext';
 import { useBusiness } from '../../context/BusinessContext';
 import { paymentService } from '../../services/paymentService';
 import { partyService } from '../../services/partyService';
@@ -25,6 +26,7 @@ export const CreatePaymentScreen: React.FC<{ navigation: any; route: any }> = ({
   route,
 }) => {
   const { colors } = useTheme();
+  const { ensureWritable } = useLicense();
   const { activeBusiness } = useBusiness();
 
   const initialType: PaymentType = route.params?.type || 'in';
@@ -74,6 +76,12 @@ export const CreatePaymentScreen: React.FC<{ navigation: any; route: any }> = ({
   }, [partyId, type, activeBusiness]);
 
   const handleSave = async () => {
+    // Licensing gate: trial expired / license expired => read-only mode.
+    const gate = ensureWritable();
+    if (!gate.allowed) {
+      Alert.alert('Read-Only Mode', gate.reason || 'Your license is not active.');
+      return;
+    }
     if (!partyId || !amount || parseFloat(amount) <= 0) {
       Alert.alert('Validation Error', 'Please select a party and enter a valid amount');
       return;
