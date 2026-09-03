@@ -7,6 +7,7 @@ import {
   Alert,
 } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
+import { useLicense } from '../../context/LicenseContext';
 import { useBusiness } from '../../context/BusinessContext';
 import { ewayService } from '../../services/ewayService';
 import { invoiceService } from '../../services/invoiceService';
@@ -25,6 +26,7 @@ export const EwayFormScreen: React.FC<{ navigation: any; route: any }> = ({
   route,
 }) => {
   const { colors } = useTheme();
+  const { ensureWritable } = useLicense();
   const { activeBusiness } = useBusiness();
   const invoiceId = route.params?.invoiceId;
 
@@ -112,6 +114,12 @@ export const EwayFormScreen: React.FC<{ navigation: any; route: any }> = ({
   };
 
   const handleSave = async () => {
+    // Licensing gate: trial expired / license expired => read-only mode.
+    const gate = ensureWritable();
+    if (!gate.allowed) {
+      Alert.alert('Read-Only Mode', gate.reason || 'Your license is not active.');
+      return;
+    }
     setLoading(true);
     try {
       await ewayService.createEwayBill(activeBusiness!.id, {

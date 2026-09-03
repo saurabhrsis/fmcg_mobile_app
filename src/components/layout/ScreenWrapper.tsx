@@ -3,6 +3,7 @@ import { View, StyleSheet, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { TopNavbar } from './TopNavbar';
+import { LicenseBanner } from './LicenseBanner';
 
 interface ScreenWrapperProps {
   children: React.ReactNode;
@@ -25,6 +26,7 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
         backgroundColor={colors.surface}
       />
       {showNavbar && <TopNavbar />}
+      <LicenseBanner />
       <View style={[styles.content, { backgroundColor: colors.bg }]}>
         {children}
       </View>

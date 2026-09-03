@@ -10,6 +10,7 @@ import {
   FlatList,
 } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
+import { useLicense } from '../../context/LicenseContext';
 import { useBusiness } from '../../context/BusinessContext';
 import { itemService } from '../../services/itemService';
 import { lookupService } from '../../services/lookupService';
@@ -27,6 +28,7 @@ export const ItemFormScreen: React.FC<{ navigation: any; route: any }> = ({
   route,
 }) => {
   const { colors } = useTheme();
+  const { ensureWritable } = useLicense();
   const { activeBusiness } = useBusiness();
   const editId = route.params?.id;
 
@@ -139,6 +141,12 @@ export const ItemFormScreen: React.FC<{ navigation: any; route: any }> = ({
   };
 
   const handleSave = async () => {
+    // Licensing gate: trial expired / license expired => read-only mode.
+    const gate = ensureWritable();
+    if (!gate.allowed) {
+      Alert.alert('Read-Only Mode', gate.reason || 'Your license is not active.');
+      return;
+    }
     if (!name.trim()) {
       Alert.alert('Validation Error', 'Product Name is required');
       return;

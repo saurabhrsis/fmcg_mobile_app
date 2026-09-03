@@ -57,6 +57,10 @@ import { WhatsAppSettingsScreen } from '../screens/settings/WhatsAppSettingsScre
 import { DesktopSyncScreen } from '../screens/settings/DesktopSyncScreen';
 import { SupportScreen } from '../screens/settings/SupportScreen';
 
+// Licensing
+import { LicenseScreen } from '../screens/license/LicenseScreen';
+import { ActivationScreen } from '../screens/license/ActivationScreen';
+
 const Stack = createNativeStackNavigator();
 
 export const AppNavigator: React.FC = () => {
@@ -118,6 +122,10 @@ export const AppNavigator: React.FC = () => {
       <Stack.Screen name="DataImport" component={DataImportScreen} />
       <Stack.Screen name="WhatsAppSettings" component={WhatsAppSettingsScreen} />
       <Stack.Screen name="Support" component={SupportScreen} />
+
+      {/* Licensing */}
+      <Stack.Screen name="License" component={LicenseScreen} />
+      <Stack.Screen name="Activation" component={ActivationScreen} />
     </Stack.Navigator>
   );
 };

@@ -20,7 +20,8 @@ The project is the full mobile ERP counterpart to the desktop FMCG application (
 ### 📁 Database & State Layer (`src/db/`, `src/context/`)
 - `src/db/schema.ts`: Complete SQLite DDL creating 12 tables and compound indexes.
 - `src/db/database.ts`: Connection pooling, WAL mode, transaction runners (`runTransaction`).
-- `src/db/seed.ts`: Initial admin user, Sharma FMCG Distributors, categories, packaging ladders, FEFO batches, serials, parties, invoices.
+- Demo seeding removed: the database now starts empty and is populated by user registration (`src/screens/auth/RegisterScreen.tsx`).
+- `src/licensing/`: offline ed25519 licence verification (RSL1 keys), 7-day free trial and device-id/seal storage, shared with the desktop licensing portal.
 - `src/context/AuthContext.tsx`: User session, authentication, setup state.
 - `src/context/BusinessContext.tsx`: Multi-firm switcher, active firm state, firm CRUD.
 - `src/context/FeaturesContext.tsx`: F12 feature toggles (batches, serials, multi-unit, e-way).

@@ -4,6 +4,21 @@ A full-featured mobile counterpart to the FMCG Desktop ERP system, designed for 
 
 ---
 
+## 🔐 Accounts & Licensing
+
+- **No demo data, no default accounts.** A fresh install starts with an empty database.
+- **Register**: create your admin user *and* your business/firm profile in one screen, then
+  you're signed in. **Login** for returning users, with security-question password recovery.
+- **7-day free trial** on every new install, all features unlocked.
+- **Licence keys shared with the desktop product** — ed25519-signed `RSL1.…` keys minted by
+  the same [RightServe licensing portal](https://github.com/nitesh1414/fmcg_software), verified
+  **offline** on device. Supports perpetual keys, device-locked keys, expiry reminders and
+  one-time online activation.
+- **Read-only mode** after the trial or a licence expires: view, search, print and back up
+  still work; creating/editing invoices, items, parties, payments and e-way bills is blocked.
+
+See [docs/LICENSING.md](docs/LICENSING.md) for the full scheme.
+
 ## 🚀 Key Features
 
 ### 1. Multi-Business / Firm Profiles

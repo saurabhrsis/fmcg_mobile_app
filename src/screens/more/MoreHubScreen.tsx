@@ -106,6 +106,13 @@ export const MoreHubScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
       action: () => navigation.navigate('WhatsAppSettings'),
     },
     {
+      title: 'License & Subscription',
+      sub: 'Trial status, activate key & renewals',
+      icon: 'key-outline' as const,
+      color: colors.palette.accent,
+      action: () => navigation.navigate('License'),
+    },
+    {
       title: 'Help & License Support',
       sub: 'Documentation & contact',
       icon: 'help-circle-outline' as const,

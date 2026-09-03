@@ -10,6 +10,7 @@ import {
   FlatList,
 } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
+import { useLicense } from '../../context/LicenseContext';
 import { useBusiness } from '../../context/BusinessContext';
 import { useAuth } from '../../context/AuthContext';
 import { itemService } from '../../services/itemService';
@@ -36,6 +37,7 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
   route,
 }) => {
   const { colors } = useTheme();
+  const { ensureWritable } = useLicense();
   const { activeBusiness } = useBusiness();
   const { user } = useAuth();
 
@@ -232,6 +234,12 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
   };
 
   const handleSaveInvoice = async () => {
+    // Licensing gate: trial expired / license expired => read-only mode.
+    const gate = ensureWritable();
+    if (!gate.allowed) {
+      Alert.alert('Read-Only Mode', gate.reason || 'Your license is not active.');
+      return;
+    }
     if (lineItems.length === 0) {
       Alert.alert('No Items', 'Please add at least one line item to the voucher');
       return;
