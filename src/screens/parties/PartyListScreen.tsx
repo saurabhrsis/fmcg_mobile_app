@@ -164,7 +164,12 @@ export const PartyListScreen: React.FC<{ navigation: any; route: any }> = ({
               >
                 <View style={styles.cardTop}>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.partyName, { color: colors.text }]}>{item.name}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={[styles.partyName, { color: colors.text, flex: 1 }]} numberOfLines={1}>
+                        {item.name}
+                      </Text>
+                      {partyService.isWalkIn(item) ? <Badge label="WALK-IN" variant="info" /> : null}
+                    </View>
                     <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>
                       {item.phone || 'No phone'} {item.state ? `• ${item.state}` : ''}
                     </Text>
@@ -172,7 +177,11 @@ export const PartyListScreen: React.FC<{ navigation: any; route: any }> = ({
                       <Text style={{ fontSize: 11, color: colors.textMuted }}>
                         GSTIN: {item.gstin}
                       </Text>
-                    ) : null}
+                    ) : (
+                      <Text style={{ fontSize: 11, color: colors.textMuted }}>
+                        Unregistered / GSTIN not added — tap to update
+                      </Text>
+                    )}
                   </View>
 
                   <View style={{ alignItems: 'flex-end' }}>

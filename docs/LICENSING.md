@@ -13,6 +13,7 @@ portal issues keys for both products.
 | Storage | files under `<userData>` | `app_meta` table in SQLite |
 | Grace behaviour | read-only after expiry | read-only after expiry **and** after trial |
 | Free trial | — | **7 days**, granted on first launch |
+| `product` field | rejects `mobile` keys | rejects `desktop` keys (untagged legacy keys count as desktop) |
 
 ## Key payload
 
@@ -21,7 +22,7 @@ Exactly the payload minted by `portal/server/licensing.js`:
 ```json
 {
   "v": 1, "id": "RS-XXXXXXXX", "client": "Apex FMCG Distributors",
-  "plan": "Premium", "issued": "2026-09-03", "expires": "2027-09-03",
+  "plan": "Premium", "product": "mobile", "issued": "2026-09-03", "expires": "2027-09-03",
   "machine": null, "reminderDays": 15, "notes": "",
   "online": true, "act": "https://portal.example.com"
 }
@@ -30,8 +31,41 @@ Exactly the payload minted by `portal/server/licensing.js`:
 - `expires: null` → perpetual licence (never warns, never locks).
 - `machine` → locks the key to one device (the app's **Device ID**, shown on the
   Activation screen and shareable via the share sheet).
+- `product` → which app the key unlocks: `"desktop"`, `"mobile"` or `"both"`. Keys minted
+  before the portal wrote this field have no `product` and are treated as **desktop** keys
+  (see below).
 - `online: true` + `act` → the key is claimed once at the portal, which binds it to one
   device. A local **seal** is then stored so every later launch is fully offline.
+
+## Desktop vs Mobile keys
+
+Activation binds **one device**, so a single key cannot unlock both the PC and the phone —
+they are different products in the portal.
+
+| Customer buys | What to generate |
+|---|---|
+| Desktop only | Product = **Desktop app** → 1 key |
+| Mobile only | Product = **Mobile app** → 1 key |
+| Both at once | Product = **Desktop + Mobile** → **2 keys**, same client, same term |
+| Mobile now, desktop later (or vice versa) | Same **client** in the portal → generate the missing product. Never reuse the first key. |
+
+- **Desktop key** → paste on the PC activation screen. The desktop app **rejects**
+  `product: "mobile"`.
+- **Mobile key** → paste in this app. `licenseProduct()` / `isMobileProduct()` in
+  `src/licensing/license.ts` accept `"mobile"` and `"both"`, and reject `"desktop"` (and
+  untagged legacy keys) with: *“This key is for the RightServe desktop app. Ask RightServe
+  for a Mobile license.”* The check runs in both `evaluate()` and `installLicenseKey()`,
+  so an already-installed desktop key also drops the app into read-only `invalid` state.
+- **Legacy keys with no `product`** are treated as desktop keys — backward compatible with
+  the desktop app, which is what every untagged key in the field was minted for. If you
+  still support customers on untagged keys on mobile, mint them a proper Mobile key rather
+  than relaxing this gate.
+- **Renewals** are per product: renew the Desktop and the Mobile row separately in License
+  History.
+- **Transfer / reset activation** is per key, so a new phone and a new PC are two separate
+  resets.
+- Licence keys never link two databases — Desktop ↔ Mobile data movement is done by the
+  sync/pairing flow (Settings → Desktop Sync → **Scan QR to connect**).
 
 ## Public key
 
@@ -82,7 +116,11 @@ blocks create/edit/delete, matching the desktop read-only middleware.
 Use the existing portal (or `tools/license-gen.js`) exactly as for desktop:
 
 ```bash
-node tools/license-gen.js --client "Apex FMCG Distributors" --days 365
+# Mobile key for this app (product is what the phone checks)
+node tools/license-gen.js --client "Apex FMCG Distributors" --days 365 --product mobile
 # device-locked (ask the client for the Device ID on the Activation screen)
-node tools/license-gen.js --client "Apex" --days 365 --machine A1B2-C3D4-E5F6-7890
+node tools/license-gen.js --client "Apex" --days 365 --product mobile --machine A1B2-C3D4-E5F6-7890
+# customer wants both apps → two keys for the same client
+node tools/license-gen.js --client "Apex" --days 365 --product desktop
+node tools/license-gen.js --client "Apex" --days 365 --product mobile
 ```

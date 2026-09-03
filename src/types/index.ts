@@ -212,6 +212,11 @@ export interface Party {
   address: string;
   state: string;
   opening_balance: number;
+  /**
+   * 1 = walk-in customer created with a name only while billing. Phone, GSTIN
+   * and address can be filled in later from the party profile.
+   */
+  is_walkin?: number;
   created_at: string;
   balance?: number;
   invoices?: Invoice[];
@@ -220,6 +225,22 @@ export interface Party {
 
 export type InvoiceType = 'sale' | 'purchase' | 'quotation';
 export type NoteKind = '' | 'credit' | 'debit';
+
+/**
+ * GST bill  → regular tax invoice (CGST+SGST / IGST).
+ * NON-GST bill → bill of supply / cash memo for unregistered, composition or
+ * exempt supplies. No tax is charged on a non-GST bill; the supply type below
+ * only records how the supply is classified (intra-state, inter-state, nil).
+ */
+export type BillType = 'gst' | 'non_gst';
+
+/**
+ * 'auto'  → decide CGST+SGST vs IGST from the party / place-of-supply state
+ * 'intra' → force CGST + SGST (intra-state)
+ * 'inter' → force IGST (inter-state / SEZ)
+ * 'nil'   → nil-rated / exempt / non-taxable supply (no tax)
+ */
+export type GstType = 'auto' | 'intra' | 'inter' | 'nil';
 export type InvoiceStatus = 'paid' | 'partial' | 'unpaid' | 'open' | 'accepted' | 'rejected' | 'converted';
 
 export interface InvoiceItem {
@@ -248,6 +269,12 @@ export interface InvoiceItem {
   disc_cd_mode?: 'pct' | 'amt';
   disc_sd_mode?: 'pct' | 'amt';
   gst_rate: number;
+  /**
+   * Rate from the item master, kept in memory (never written to the DB) while a
+   * non-GST bill / nil-rated supply forces `gst_rate` to 0, so switching back
+   * to a taxable bill restores it.
+   */
+  orig_gst_rate?: number;
   taxable: number;
   tax_amount: number;
   line_total: number;
@@ -304,7 +331,8 @@ export interface Invoice {
   ack_date?: string;
   no_of_packets?: string;
   supplier_inv_no?: string;
-  gst_type?: 'auto' | 'intra' | 'inter';
+  gst_type?: GstType;
+  bill_type?: BillType;
   created_by?: number | null;
   created_at: string;
   items?: InvoiceItem[];
@@ -375,6 +403,8 @@ export interface DashboardMetrics {
   todaySales: number;
   monthSales: number;
   monthPurchase: number;
+  /** Turnover billed on non-GST (bill of supply) vouchers this month. */
+  monthNonGstSales?: number;
   receivable: number;
   payable: number;
   stockValue: number;

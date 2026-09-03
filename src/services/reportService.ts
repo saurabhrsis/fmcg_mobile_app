@@ -29,6 +29,13 @@ export const reportService = {
         [monthStart, businessId]
       ))?.v || 0;
 
+    // Non-GST (bill of supply) turnover this month — no tax on these bills.
+    const monthNonGstSales =
+      (await queryOne<{ v: number }>(
+        "SELECT COALESCE(SUM(total), 0) as v FROM invoices WHERE type = 'sale' AND date >= ? AND business_id = ? AND IFNULL(bill_type, 'gst') = 'non_gst'",
+        [monthStart, businessId]
+      ))?.v || 0;
+
     // Receivables & Payables
     const parties = await queryAll<{ id: number; opening_balance: number }>('SELECT id, opening_balance FROM parties');
     let receivable = 0;
@@ -129,6 +136,7 @@ export const reportService = {
       todaySales,
       monthSales,
       monthPurchase,
+      monthNonGstSales: round2(monthNonGstSales),
       receivable: round2(receivable),
       payable: round2(payable),
       stockValue: round2(stockValue),
@@ -168,11 +176,17 @@ export const reportService = {
     let totalSales = 0;
     let totalTax = 0;
     let totalTaxable = 0;
+    let nonGstCount = 0;
+    let nonGstTotal = 0;
 
     rows.forEach((r) => {
       totalSales += Number(r.total) || 0;
       totalTax += Number(r.tax_total) || 0;
       totalTaxable += Number(r.subtotal) || 0;
+      if (String(r.bill_type || 'gst') === 'non_gst') {
+        nonGstCount += 1;
+        nonGstTotal += Number(r.total) || 0;
+      }
     });
 
     return {
@@ -182,6 +196,8 @@ export const reportService = {
         totalSales: round2(totalSales),
         totalTax: round2(totalTax),
         totalTaxable: round2(totalTaxable),
+        nonGstCount,
+        nonGstTotal: round2(nonGstTotal),
       },
     };
   },
@@ -286,6 +302,8 @@ export const reportService = {
       JOIN invoices inv ON inv.id = ii.invoice_id
       LEFT JOIN parties p ON p.id = inv.party_id
       WHERE inv.type = 'sale' AND inv.business_id = ?
+        AND IFNULL(inv.bill_type, 'gst') <> 'non_gst'
+        AND IFNULL(inv.gst_type, 'auto') <> 'nil'
     `;
     const params: any[] = [businessId];
 

@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useTheme } from '../../context/ThemeContext';
@@ -31,16 +32,30 @@ export const DesktopSyncScreen: React.FC<{ navigation: any }> = ({ navigation })
   const [lastPullAt, setLastPullAt] = useState('');
   const [busy, setBusy] = useState<Busy>('');
   const [connStatus, setConnStatus] = useState<{ ok: boolean; message: string } | null>(null);
+  // Manual URL / key entry is the fallback — scanning the desktop QR is primary.
+  const [manualOpen, setManualOpen] = useState(false);
+  const [paired, setPaired] = useState(false);
+
+  const loadConfig = async () => {
+    const cfg = await syncService.getConfig();
+    setUrl(cfg.url);
+    setApiKey(cfg.apiKey);
+    setLastPushAt(cfg.lastPushAt);
+    setLastPullAt(cfg.lastPullAt);
+    setPaired(!!(cfg.url && cfg.apiKey));
+    return cfg;
+  };
 
   useEffect(() => {
-    (async () => {
-      const cfg = await syncService.getConfig();
-      setUrl(cfg.url);
-      setApiKey(cfg.apiKey);
-      setLastPushAt(cfg.lastPushAt);
-      setLastPullAt(cfg.lastPullAt);
-    })();
+    loadConfig();
   }, []);
+
+  // Coming back from the QR scanner: pick up the freshly saved pairing details.
+  useFocusEffect(
+    React.useCallback(() => {
+      loadConfig();
+    }, [])
+  );
 
   const fmtTime = (iso: string) =>
     iso ? new Date(iso).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : 'Never';
@@ -56,6 +71,14 @@ export const DesktopSyncScreen: React.FC<{ navigation: any }> = ({ navigation })
   // ---------------- network actions ----------------
 
   const handleTest = async () => {
+    if (!apiKey.trim()) {
+      setConnStatus({
+        ok: false,
+        message: 'The API key is required — scan the desktop pairing QR or paste the key shown under it.',
+      });
+      setManualOpen(true);
+      return;
+    }
     setBusy('test');
     setConnStatus(null);
     try {
@@ -68,6 +91,13 @@ export const DesktopSyncScreen: React.FC<{ navigation: any }> = ({ navigation })
   };
 
   const handlePush = async () => {
+    if (!url.trim() || !apiKey.trim()) {
+      Alert.alert(
+        'Not Paired Yet',
+        'Scan the pairing QR on your desktop first (Settings → Mobile Sync). The QR supplies both the address and the required API key.'
+      );
+      return;
+    }
     setBusy('push');
     try {
       await saveConfig();
@@ -82,6 +112,13 @@ export const DesktopSyncScreen: React.FC<{ navigation: any }> = ({ navigation })
   };
 
   const handlePull = async () => {
+    if (!url.trim() || !apiKey.trim()) {
+      Alert.alert(
+        'Not Paired Yet',
+        'Scan the pairing QR on your desktop first (Settings → Mobile Sync). The QR supplies both the address and the required API key.'
+      );
+      return;
+    }
     setBusy('pull');
     try {
       await saveConfig();
@@ -97,6 +134,13 @@ export const DesktopSyncScreen: React.FC<{ navigation: any }> = ({ navigation })
   };
 
   const handleFullSync = async () => {
+    if (!url.trim() || !apiKey.trim()) {
+      Alert.alert(
+        'Not Paired Yet',
+        'Scan the pairing QR on your desktop first (Settings → Mobile Sync). The QR supplies both the address and the required API key.'
+      );
+      return;
+    }
     setBusy('full');
     try {
       await saveConfig();
@@ -225,7 +269,7 @@ export const DesktopSyncScreen: React.FC<{ navigation: any }> = ({ navigation })
           Two-way data exchange with the RightServe desktop application
         </Text>
 
-      {/* Hero */}
+      {/* Hero + first-run setup */}
       <Card>
         <View style={styles.heroRow}>
           <Ionicons name="phone-portrait-outline" size={26} color={colors.palette.primary} />
@@ -237,6 +281,32 @@ export const DesktopSyncScreen: React.FC<{ navigation: any }> = ({ navigation })
               Move billing, inventory & party data between this device and the RightServe desktop portal.
             </Text>
           </View>
+        </View>
+
+        {/* Set up on desktop, then scan QR and Full Sync */}
+        <View style={[styles.stepsBox, { backgroundColor: colors.surfaceSubtle, borderColor: colors.border }]}>
+          <Text style={[styles.stepsTitle, { color: colors.text }]}>
+            {paired ? 'How this phone stays in sync' : 'Set up in 4 steps'}
+          </Text>
+          {[
+            'Create the company, items and parties on the DESKTOP app first.',
+            'On the desktop open Settings → Mobile Sync and keep the pairing QR on screen.',
+            'Tap “Scan QR to connect” below — the address and API key are read from the QR.',
+            'Then tap “Full Sync”: the desktop data is pulled in and this phone’s data is pushed back.',
+          ].map((t, i) => (
+            <View key={i} style={styles.stepRow}>
+              <View style={[styles.stepNum, { backgroundColor: colors.palette.primary }]}>
+                <Text style={styles.stepNumText}>{i + 1}</Text>
+              </View>
+              <Text style={[styles.stepText, { color: colors.textSecondary }]}>{t}</Text>
+            </View>
+          ))}
+          <Text style={[styles.stepsNote, { color: colors.textMuted }]}>
+            Use the SAME business name on both devices — records merge by name, item SKU, party name,
+            invoice number and batch number, never by licence key. A phone with empty data imports the
+            desktop firm on the first pull. Licence keys only unlock each app; desktop and mobile need
+            their own key.
+          </Text>
         </View>
         <View style={[styles.lastSyncRow, { backgroundColor: colors.surfaceSecondary }]}>
           <View style={{ flex: 1 }}>
@@ -250,29 +320,84 @@ export const DesktopSyncScreen: React.FC<{ navigation: any }> = ({ navigation })
         </View>
       </Card>
 
-      {/* Network sync */}
+      {/* Connect: scan the desktop pairing QR */}
       <Card>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Wi-Fi / Network Sync</Text>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Connect to Desktop</Text>
         <Text style={[styles.sectionSub, { color: colors.textMuted }]}>
-          Both devices must be on the same network. Find the sync address in the desktop portal under
-          Settings → Mobile Sync (e.g. http://192.168.1.5:8090).
+          Both devices must be on the same Wi-Fi network. The desktop shows the pairing QR under
+          Settings → Mobile Sync — it carries the address (port 4000) and the API key, so nothing has
+          to be typed.
         </Text>
 
-        <Input
-          label="Desktop Portal URL"
-          value={url}
-          onChangeText={setUrl}
-          placeholder="http://192.168.1.5:8090"
-          autoCapitalize="none"
-          keyboardType="url"
-        />
-        <Input
-          label="API Key (optional)"
-          value={apiKey}
-          onChangeText={setApiKey}
-          placeholder="Leave blank if the portal has no key set"
-          autoCapitalize="none"
-        />
+        <TouchableOpacity
+          style={[styles.scanBtn, { backgroundColor: colors.palette.primary }]}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('ScanDesktopQr')}
+        >
+          <Ionicons name="qr-code-outline" size={22} color="#ffffff" />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.scanBtnTitle}>Scan QR to connect</Text>
+            <Text style={styles.scanBtnSub}>Point the camera at the desktop pairing QR</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.85)" />
+        </TouchableOpacity>
+
+        {/* Pairing status */}
+        <View style={[styles.pairedRow, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}>
+          <Ionicons
+            name={paired ? 'checkmark-circle' : 'alert-circle'}
+            size={16}
+            color={paired ? '#16A34A' : colors.palette.warning}
+          />
+          <Text style={[styles.pairedText, { color: colors.textSecondary }]} numberOfLines={2}>
+            {paired
+              ? `Paired with ${url}`
+              : 'Not paired yet — scan the desktop QR (or enter the address and API key manually below).'}
+          </Text>
+        </View>
+
+        {/* Manual fallback */}
+        <TouchableOpacity
+          style={styles.cantScanRow}
+          activeOpacity={0.7}
+          onPress={() => setManualOpen(!manualOpen)}
+        >
+          <Ionicons
+            name={manualOpen ? 'chevron-down' : 'chevron-forward'}
+            size={16}
+            color={colors.palette.primary}
+          />
+          <Text style={[styles.cantScanText, { color: colors.palette.primary }]}>
+            Can’t scan? Enter the desktop address & key manually
+          </Text>
+        </TouchableOpacity>
+
+        {manualOpen && (
+          <View style={{ marginTop: 10 }}>
+            <Input
+              label="Desktop Portal URL"
+              value={url}
+              onChangeText={setUrl}
+              placeholder="http://192.168.1.5:4000"
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+            />
+            <Input
+              label="API Key (required)"
+              value={apiKey}
+              onChangeText={setApiKey}
+              placeholder="rsync_… — shown under the desktop QR"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <Text style={{ fontSize: 10.5, color: colors.textMuted, marginTop: -6, marginBottom: 10 }}>
+              The desktop rejects requests without its API key, so sync will not work if this is left
+              blank. Pasting a full endpoint such as http://192.168.1.5:4000/api/sync/push is fine —
+              the /api/sync part is trimmed automatically.
+            </Text>
+          </View>
+        )}
 
         {connStatus && (
           <View
@@ -299,7 +424,7 @@ export const DesktopSyncScreen: React.FC<{ navigation: any }> = ({ navigation })
           icon="wifi-outline"
           color={colors.palette.accent}
           title="Test Connection"
-          sub="Check that the desktop portal is reachable"
+          sub={paired ? 'Check that the desktop portal is reachable' : 'Pair first — scan the desktop QR'}
           onPress={handleTest}
           loading={busy === 'test'}
         />
@@ -359,9 +484,11 @@ export const DesktopSyncScreen: React.FC<{ navigation: any }> = ({ navigation })
       <Card>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>How Merging Works</Text>
         {[
-          'Records are matched by their identity — invoice number, item name & SKU, party name, batch number — not by internal IDs, so both sides can keep billing independently.',
+          'Records are matched by their identity — business name, item name & SKU, party name & type, invoice number & type, batch number — not by internal IDs, so both sides can keep billing independently.',
+          'Keep the SAME business name on the phone and the PC; that is what links the two databases. The licence key does not link them — it only unlocks each app.',
           'Merge never deletes or overwrites your existing entries; it only adds records that are missing on this device ("local wins").',
           'Invoices that already exist here (same number & type) are skipped, so re-syncing never duplicates bills or stock.',
+          'Each device keeps its own company profile row — fill the GSTIN on both, or pull first on a fresh phone so the businesses match.',
           'Use "Replace All" only when setting up a fresh device from a desktop export.',
         ].map((t, i) => (
           <View key={i} style={styles.bulletRow}>
@@ -398,6 +525,91 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
     lineHeight: 16,
+  },
+  stepsBox: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 14,
+  },
+  stepsTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+  stepRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 7,
+  },
+  stepNum: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  stepNumText: {
+    color: '#ffffff',
+    fontSize: 10.5,
+    fontWeight: '800',
+  },
+  stepText: {
+    flex: 1,
+    fontSize: 11.5,
+    lineHeight: 16,
+  },
+  stepsNote: {
+    fontSize: 10.5,
+    lineHeight: 15,
+    marginTop: 4,
+  },
+  scanBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  scanBtnTitle: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  scanBtnSub: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  pairedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    marginTop: 12,
+  },
+  pairedText: {
+    flex: 1,
+    fontSize: 11.5,
+    fontWeight: '600',
+    lineHeight: 15,
+  },
+  cantScanRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 12,
+    paddingVertical: 4,
+  },
+  cantScanText: {
+    fontSize: 12.5,
+    fontWeight: '700',
   },
   lastSyncRow: {
     flexDirection: 'row',

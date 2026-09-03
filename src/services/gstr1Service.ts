@@ -1,5 +1,5 @@
 import { queryAll, queryOne } from '../db/database';
-import { isInterState, stateCode } from '../utils/gstState';
+import { isInterState, isNilRated, stateCode } from '../utils/gstState';
 import { toUQC } from '../utils/uqc';
 import { round2 } from '../utils/formatters';
 
@@ -28,6 +28,9 @@ export const gstr1Service = {
     const b2cs: any[] = [];
     const cdnr: any[] = [];
     const cdnur: any[] = [];
+    // Non-GST bills (bill of supply) and nil-rated / exempt supplies carry no
+    // tax, so they are reported separately and never enter GSTR-1 tables.
+    const nonGst: any[] = [];
     let nilTotal = 0;
 
     for (const inv of invoices) {
@@ -35,6 +38,12 @@ export const gstr1Service = {
       const inter = isInterState(biz, inv);
       const isReg = !!(inv.party_gstin && inv.party_gstin.trim().length === 15);
       const isNote = inv.note_kind === 'credit' || inv.note_kind === 'debit';
+
+      if (isNilRated(inv)) {
+        nonGst.push(inv);
+        nilTotal += Number(inv.total) || 0;
+        continue;
+      }
 
       if (isNote) {
         if (isReg) cdnr.push(inv);
@@ -60,12 +69,15 @@ export const gstr1Service = {
         b2cs: b2cs.length,
         cdnr: cdnr.length,
         cdnur: cdnur.length,
+        nonGst: nonGst.length,
       },
       b2b,
       b2cl,
       b2cs,
       cdnr,
       cdnur,
+      nonGst,
+      nilTotal: round2(nilTotal),
     };
   },
 

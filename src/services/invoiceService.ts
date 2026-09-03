@@ -1,6 +1,7 @@
 import { queryAll, queryOne, execute, runTransaction } from '../db/database';
-import { Invoice, InvoiceItem, InvoiceType, NoteKind } from '../types';
+import { BillType, Invoice, InvoiceItem, InvoiceType, NoteKind } from '../types';
 import { computeLineMath } from '../utils/stock';
+import { isNilRated } from '../utils/gstState';
 import { round2, round3 } from '../utils/formatters';
 import { batchService } from './batchService';
 import { serialService } from './serialService';
@@ -49,6 +50,7 @@ export const invoiceService = {
       to?: string;
       query?: string;
       status?: string;
+      billType?: BillType;
     } = {}
   ): Promise<Invoice[]> {
     let sql = `
@@ -77,6 +79,12 @@ export const invoiceService = {
     if (filter.status) {
       sql += ' AND inv.status = ?';
       params.push(filter.status);
+    }
+
+    if (filter.billType === 'non_gst') {
+      sql += " AND IFNULL(inv.bill_type, 'gst') = 'non_gst'";
+    } else if (filter.billType === 'gst') {
+      sql += " AND IFNULL(inv.bill_type, 'gst') <> 'non_gst'";
     }
 
     if (filter.from) {
@@ -134,6 +142,15 @@ export const invoiceService = {
     const isNote = data.note_kind === 'credit' || data.note_kind === 'debit';
     const isQuote = type === 'quotation';
     const features = await businessService.getCompanyFeatures();
+
+    // GST bill vs NON-GST bill (bill of supply / cash memo). A non-GST bill —
+    // and any nil-rated / exempt supply — carries no tax at all, so the rates
+    // on the line items are forced to zero before the maths runs.
+    const billType: BillType = String(data.bill_type || 'gst').toLowerCase() === 'non_gst' ? 'non_gst' : 'gst';
+    const noTax = isNilRated({ bill_type: billType, gst_type: data.gst_type });
+    if (noTax) {
+      lines = lines.map((l) => ({ ...l, gst_rate: 0 }));
+    }
 
     // Check negative stock for sales
     if (type === 'sale' && !isNote && !isQuote && features.negativeStock === false) {
@@ -218,14 +235,14 @@ export const invoiceService = {
         valid_until, consignee_name, consignee_address, consignee_gstin, consignee_state,
         place_of_supply, eway_no, pay_terms, po_no, po_date, other_ref, dispatch_doc,
         delivery_note, delivery_note_date, dispatched_through, destination, terms_delivery,
-        irn, ack_no, ack_date, no_of_packets, supplier_inv_no, gst_type, created_by
+        irn, ack_no, ack_date, no_of_packets, supplier_inv_no, gst_type, bill_type, created_by
       ) VALUES (
         ?, ?, ?, ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?, ?, ?
+        ?, ?, ?, ?, ?, ?, ?, ?
       )`,
       [
         invNo,
@@ -267,6 +284,7 @@ export const invoiceService = {
         data.no_of_packets || '',
         data.supplier_inv_no || '',
         data.gst_type || 'auto',
+        billType,
         userId || null,
       ]
     );
@@ -468,6 +486,7 @@ export const invoiceService = {
         consignee_state: quote.consignee_state,
         place_of_supply: quote.place_of_supply,
         gst_type: quote.gst_type || 'auto',
+        bill_type: quote.bill_type || 'gst',
         discount: quote.discount,
       },
       quote.items || [],

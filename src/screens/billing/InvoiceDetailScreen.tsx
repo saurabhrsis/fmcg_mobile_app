@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,12 +6,15 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useBusiness } from '../../context/BusinessContext';
 import { invoiceService } from '../../services/invoiceService';
+import { partyService } from '../../services/partyService';
 import { printService } from '../../services/printService';
 import { whatsappService } from '../../services/whatsappService';
-import { Invoice } from '../../types';
+import { Invoice, Party } from '../../types';
+import { isNonGstBill, isNilRated, supplyTypeLabel } from '../../utils/gstState';
 import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
 import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
@@ -27,12 +30,16 @@ export const InvoiceDetailScreen: React.FC<{ navigation: any; route: any }> = ({
   const invoiceId = route.params?.id;
 
   const [invoice, setInvoice] = useState<Invoice | null>(null);
+  const [party, setParty] = useState<Party | null>(null);
   const [loading, setLoading] = useState(true);
 
   const loadInvoice = async () => {
     try {
       const data = await invoiceService.getInvoiceById(invoiceId);
       setInvoice(data);
+      // The party profile is loaded too so a walk-in customer's details can be
+      // completed after the bill is saved.
+      setParty(data?.party_id ? await partyService.getPartyById(data.party_id) : null);
     } catch (e) {
       console.error('Failed to load invoice:', e);
     } finally {
@@ -43,6 +50,18 @@ export const InvoiceDetailScreen: React.FC<{ navigation: any; route: any }> = ({
   useEffect(() => {
     loadInvoice();
   }, [invoiceId]);
+
+  // Refresh when returning from the party profile ("update details later").
+  useFocusEffect(
+    useCallback(() => {
+      if (!loading) loadInvoice();
+    }, [invoiceId, loading])
+  );
+
+  const nonGst = isNonGstBill(invoice);
+  const noTax = isNilRated(invoice);
+  const walkIn = !!invoice?.party_id && partyService.isWalkIn(party);
+  const missingPartyFields = party ? partyService.missingFields(party) : [];
 
   if (!invoice && !loading) {
     return (
@@ -74,8 +93,23 @@ export const InvoiceDetailScreen: React.FC<{ navigation: any; route: any }> = ({
 
   const handleWhatsApp = async () => {
     if (!activeBusiness || !invoice) return;
+    const phone = String(invoice.party_phone || party?.phone || '').trim();
+    if (!phone) {
+      Alert.alert(
+        'No Phone Number',
+        `No mobile number is saved for ${invoice.party_name || 'this customer'} yet. Add it to the customer profile to send the bill on WhatsApp.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Add Number',
+            onPress: () => invoice.party_id && navigation.navigate('PartyForm', { id: invoice.party_id }),
+          },
+        ]
+      );
+      return;
+    }
     const msg = whatsappService.buildInvoiceMessage(activeBusiness, invoice);
-    const ok = await whatsappService.sendWhatsApp(invoice.party_phone || '', msg);
+    const ok = await whatsappService.sendWhatsApp(phone, msg);
     if (!ok) {
       Alert.alert('WhatsApp Error', 'Could not open WhatsApp on this device');
     }
@@ -116,7 +150,11 @@ export const InvoiceDetailScreen: React.FC<{ navigation: any; route: any }> = ({
   return (
     <ScreenWrapper
       title={invoice?.invoice_no || 'Voucher Details'}
-      subtitle={invoice ? `${(invoice.type || 'sale').toUpperCase()} • ${formatDate(invoice.date)}` : undefined}
+      subtitle={
+        invoice
+          ? `${nonGst ? 'NON-GST BILL' : (invoice.type || 'sale').toUpperCase()} • ${formatDate(invoice.date)}`
+          : undefined
+      }
     >
       <ScrollView
         contentContainerStyle={styles.container}
@@ -134,15 +172,31 @@ export const InvoiceDetailScreen: React.FC<{ navigation: any; route: any }> = ({
                 Dated: {formatDate(invoice?.date)}
               </Text>
             </View>
-            <Badge label={invoice?.status || 'unpaid'} variant={invoice?.status === 'paid' ? 'success' : 'warning'} />
+            <View style={{ alignItems: 'flex-end', gap: 4 }}>
+              <Badge label={invoice?.status || 'unpaid'} variant={invoice?.status === 'paid' ? 'success' : 'warning'} />
+              {nonGst ? (
+                <Badge label="NON-GST BILL" variant="warning" />
+              ) : invoice?.gst_type === 'nil' ? (
+                <Badge label="NIL / EXEMPT" variant="neutral" />
+              ) : null}
+            </View>
           </View>
 
-          <View style={[styles.partyBox, { borderTopColor: colors.border }]}>
-            <Text style={[styles.partyHeading, { color: colors.textMuted }]}>
-              {invoice?.type === 'purchase' ? 'Supplier / Vendor' : 'Customer / Buyer'}
+          {(nonGst || invoice?.gst_type === 'nil') && (
+            <Text style={[styles.supplyTypeText, { color: colors.textMuted }]}>
+              {supplyTypeLabel(invoice)} · no GST charged on this bill
             </Text>
+          )}
+
+          <View style={[styles.partyBox, { borderTopColor: colors.border }]}>
+            <View style={styles.partyHeadingRow}>
+              <Text style={[styles.partyHeading, { color: colors.textMuted }]}>
+                {invoice?.type === 'purchase' ? 'Supplier / Vendor' : 'Customer / Buyer'}
+              </Text>
+              {walkIn ? <Badge label="WALK-IN" variant="info" /> : null}
+            </View>
             <Text style={[styles.partyName, { color: colors.text }]}>
-              {invoice?.party_name || 'Cash Customer'}
+              {invoice?.party_name || 'Walk-in Customer'}
             </Text>
             {invoice?.party_address ? (
               <Text style={[styles.partySub, { color: colors.textMuted }]}>{invoice.party_address}</Text>
@@ -152,6 +206,29 @@ export const InvoiceDetailScreen: React.FC<{ navigation: any; route: any }> = ({
             ) : null}
             {invoice?.party_gstin ? (
               <Text style={[styles.partySub, { color: colors.textMuted }]}>GSTIN: {invoice.party_gstin}</Text>
+            ) : null}
+
+            {walkIn || missingPartyFields.length > 0 ? (
+              <View style={[styles.walkInBox, { backgroundColor: colors.surfaceSubtle, borderColor: colors.border }]}>
+                <Text style={[styles.walkInText, { color: colors.textSecondary }]}>
+                  {walkIn
+                    ? 'Billed as a walk-in customer with a name only.'
+                    : 'Profile incomplete.'}{' '}
+                  {missingPartyFields.length > 0
+                    ? `You can still add ${missingPartyFields.join(', ')} — the bill stays linked to this customer.`
+                    : ''}
+                </Text>
+                {!!invoice?.party_id && (
+                  <Button
+                    title="Update Customer Details"
+                    icon="create-outline"
+                    size="sm"
+                    variant="secondary"
+                    onPress={() => navigation.navigate('PartyForm', { id: invoice.party_id })}
+                    style={{ marginTop: 8 }}
+                  />
+                )}
+              </View>
             ) : null}
           </View>
         </Card>
@@ -205,7 +282,8 @@ export const InvoiceDetailScreen: React.FC<{ navigation: any; route: any }> = ({
               <View style={{ flex: 1 }}>
                 <Text style={[styles.itemName, { color: colors.text }]}>{it.item_name}</Text>
                 <Text style={[styles.itemSub, { color: colors.textMuted }]}>
-                  {it.qty} {it.unit || 'PCS'} × {formatCurrency(it.price)} | GST: {it.gst_rate}%
+                  {it.qty} {it.unit || 'PCS'} × {formatCurrency(it.price)} |{' '}
+                  {noTax ? 'GST: N/A' : `GST: ${it.gst_rate}%`}
                   {it.batch_no ? ` | Batch: ${it.batch_no}` : ''}
                 </Text>
                 {it.serials ? (
@@ -238,7 +316,9 @@ export const InvoiceDetailScreen: React.FC<{ navigation: any; route: any }> = ({
 
           <View style={styles.calcRow}>
             <Text style={{ color: colors.textMuted }}>Total GST Tax:</Text>
-            <Text style={{ fontWeight: '600', color: colors.text }}>{formatCurrency(invoice?.tax_total)}</Text>
+            <Text style={{ fontWeight: '600', color: noTax ? colors.textMuted : colors.text }}>
+              {noTax ? (nonGst ? 'Not applicable (non-GST bill)' : 'Nil / Exempt') : formatCurrency(invoice?.tax_total)}
+            </Text>
           </View>
 
           <View style={[styles.calcRow, styles.grandTotalBorder, { borderTopColor: colors.palette.primary }]}>
@@ -299,6 +379,27 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     marginTop: 12,
     paddingTop: 10,
+  },
+  partyHeadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  supplyTypeText: {
+    fontSize: 11,
+    marginTop: 6,
+    fontWeight: '600',
+  },
+  walkInBox: {
+    marginTop: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    padding: 10,
+  },
+  walkInText: {
+    fontSize: 11.5,
+    lineHeight: 16,
   },
   partyHeading: {
     fontSize: 11,

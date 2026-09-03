@@ -72,7 +72,7 @@ export const MoreHubScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
     },
     {
       title: 'Desktop Portal Sync',
-      sub: 'Two-way sync & data exchange with desktop',
+      sub: 'Scan the desktop QR & two-way data exchange',
       icon: 'sync-outline' as const,
       color: colors.palette.success,
       action: () => navigation.navigate('DesktopSync'),

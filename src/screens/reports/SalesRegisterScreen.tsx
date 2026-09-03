@@ -48,12 +48,13 @@ export const SalesRegisterScreen: React.FC<{ navigation: any }> = ({ navigation 
         {
           title: 'Sales Register',
           subtitle: `${activeBusiness?.name || ''}${from || to ? ` · ${from || 'start'} to ${to || 'today'}` : ''}`,
-          headers: ['Invoice No', 'Date', 'Party', 'GSTIN', 'Taxable', 'Tax', 'Total', 'Paid', 'Status'],
+          headers: ['Invoice No', 'Date', 'Party', 'GSTIN', 'Bill Type', 'Taxable', 'Tax', 'Total', 'Paid', 'Status'],
           rows: data.rows.map((r: any) => [
-            r.invoice_no, r.date, r.party_name || 'Cash', r.party_gstin || '',
+            r.invoice_no, r.date, r.party_name || 'Walk-in', r.party_gstin || '',
+            r.bill_type === 'non_gst' ? 'Non-GST' : r.gst_type === 'nil' ? 'Nil/Exempt' : 'GST',
             r.subtotal, r.tax_total, r.total, r.paid, r.status,
           ]),
-          footer: ['TOTAL', '', '', '', data.summary.totalTaxable, data.summary.totalTax, data.summary.totalSales, '', ''],
+          footer: ['TOTAL', '', '', '', '', data.summary.totalTaxable, data.summary.totalTax, data.summary.totalSales, '', ''],
         },
       ]);
     } catch (e: any) {
@@ -110,6 +111,12 @@ export const SalesRegisterScreen: React.FC<{ navigation: any }> = ({ navigation 
               </Text>
             </View>
           </View>
+          {data.summary.nonGstCount > 0 ? (
+            <Text style={{ fontSize: 11, color: colors.palette.primaryDark, marginTop: 8 }}>
+              Includes {data.summary.nonGstCount} non-GST bill{data.summary.nonGstCount === 1 ? '' : 's'} of{' '}
+              {formatCurrency(data.summary.nonGstTotal)} (no tax, not part of GSTR-1)
+            </Text>
+          ) : null}
         </Card>
 
         {/* List */}
@@ -130,16 +137,21 @@ export const SalesRegisterScreen: React.FC<{ navigation: any }> = ({ navigation 
               <View style={styles.itemTop}>
                 <View>
                   <Text style={[styles.invNo, { color: colors.palette.primary }]}>{item.invoice_no}</Text>
-                  <Text style={{ fontSize: 11, color: colors.textMuted }}>{formatDate(item.date)}</Text>
+                  <Text style={{ fontSize: 11, color: colors.textMuted }}>
+                    {formatDate(item.date)}
+                    {item.bill_type === 'non_gst' ? ' • NON-GST BILL' : item.gst_type === 'nil' ? ' • NIL / EXEMPT' : ''}
+                  </Text>
                 </View>
                 <Text style={[styles.invTotal, { color: colors.text }]}>{formatCurrency(item.total)}</Text>
               </View>
               <View style={{ marginTop: 6 }}>
                 <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }}>
-                  {item.party_name || 'Cash Customer'}
+                  {item.party_name || 'Walk-in Customer'}
                 </Text>
                 <Text style={{ fontSize: 11, color: colors.textMuted }}>
-                  Taxable: {formatCurrency(item.subtotal)} • GST: {formatCurrency(item.tax_total)}
+                  {item.bill_type === 'non_gst' || item.gst_type === 'nil'
+                    ? `Value: ${formatCurrency(item.subtotal)} • GST: not applicable`
+                    : `Taxable: ${formatCurrency(item.subtotal)} • GST: ${formatCurrency(item.tax_total)}`}
                 </Text>
               </View>
             </Card>

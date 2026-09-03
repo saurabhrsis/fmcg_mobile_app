@@ -15,6 +15,7 @@ export const LicenseScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
     ? [
         ['Status', stateLabel(status)],
         ['Plan', status.plan || '—'],
+        ['Product', status.product === 'both' ? 'Desktop + Mobile' : status.product === 'mobile' ? 'Mobile app' : status.payload ? 'Desktop app' : '—'],
         ['Licensed To', status.client || (status.trial ? 'Trial User' : '—')],
         ['License ID', status.payload?.id || '—'],
         ['Issued On', status.payload?.issued || '—'],

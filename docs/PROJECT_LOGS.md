@@ -44,6 +44,8 @@ The project is the full mobile ERP counterpart to the desktop FMCG application (
 - `backupService.ts`: Full JSON database snapshots and restoration.
 - `migrateService.ts`: CSV parsing and batch catalog import.
 - `settingsService.ts`: Global configuration key-value storage.
+- `syncService.ts`: Desktop portal sync — LAN ping/pull/push, offline sync files, natural-key merge,
+  and `parsePairingCode()` for the desktop pairing QR (JSON or `rightserve://sync?…`).
 
 ### 📁 UI Screens Layer (`src/screens/`)
 - **Auth**: `LoginScreen.tsx`, `BusinessSetupScreen.tsx`, `SetupAdminScreen.tsx`, `ForgotPasswordScreen.tsx`.
@@ -54,7 +56,7 @@ The project is the full mobile ERP counterpart to the desktop FMCG application (
 - **E-Way**: `EwayListScreen.tsx`, `EwayFormScreen.tsx`, `EwayDetailScreen.tsx`.
 - **Reports**: `ReportsHomeScreen.tsx`, `SalesRegisterScreen.tsx`, `PurchaseRegisterScreen.tsx`, `GstReportScreen.tsx`, `HsnSummaryScreen.tsx`, `OutstandingReportScreen.tsx`, `FyBalanceScreen.tsx`, `TraceabilityScreen.tsx`.
 - **Businesses & Users**: `BusinessListScreen.tsx`, `BusinessFormScreen.tsx`, `UserListScreen.tsx`, `UserFormScreen.tsx`.
-- **Settings**: `MoreHubScreen.tsx`, `FeaturesConfigScreen.tsx`, `ThemeSettingsScreen.tsx`, `BackupRestoreScreen.tsx`, `DataImportScreen.tsx`, `WhatsAppSettingsScreen.tsx`, `SupportScreen.tsx`.
+- **Settings**: `MoreHubScreen.tsx`, `FeaturesConfigScreen.tsx`, `ThemeSettingsScreen.tsx`, `BackupRestoreScreen.tsx`, `DataImportScreen.tsx`, `WhatsAppSettingsScreen.tsx`, `DesktopSyncScreen.tsx`, `ScanDesktopQrScreen.tsx`, `SupportScreen.tsx`.
 
 ### 📁 Common Components & Navigation (`src/components/`, `src/navigation/`)
 - `ScreenWrapper.tsx`, `TopNavbar.tsx`, `Card.tsx`, `Button.tsx`, `Input.tsx`, `Select.tsx`, `Badge.tsx`, `SearchBar.tsx`, `StatCard.tsx`, `Modal.tsx`, `EmptyState.tsx`.
@@ -75,7 +77,7 @@ npx tsc --noEmit
 ### Running Automated Test Suite
 ```bash
 node scripts/verify_system.mjs
-# Executes all 12 core ERP business logic scenarios on SQLite
+# Executes all 16 core ERP business logic scenarios on SQLite
 ```
 
 ### Running Development Server
@@ -108,5 +110,48 @@ cd ios && pod install && open RightServeFMCGMobile.xcworkspace
 ## 4. Key Decisions & Technical Notes
 - **Packaging Ladder Factor Multiplier**: Every item unit row in `item_units` contains a `factor` representing the number of base units in that packaging tier. All stock decrements in `batches` and `items` are computed in base units.
 - **3-Tier Discount Order**: Trade discount is deducted first from gross amount, followed by Cash Discount (CD) on the subtotal, followed by Special Discount (SD).
-- **GST Intra vs Inter State**: The GST engine compares the 2-digit state prefix of the active business GSTIN against the customer/supplier GSTIN (e.g., `07` Delhi vs `27` Maharashtra). If equal, it splits into `CGST` and `SGST`; otherwise, `IGST`.
+- **GST Intra vs Inter State**: The GST engine compares the 2-digit state prefix of the active business GSTIN against the customer/supplier GSTIN (e.g., `07` Delhi vs `27` Maharashtra). If equal, it splits into `CGST` and `SGST`; otherwise, `IGST`. A per-invoice `gst_type` can force `intra` / `inter` (SEZ supplies) or `nil`.
+- **Non-GST Bills (`invoices.bill_type`)**: `'gst'` (tax invoice) or `'non_gst'` (bill of supply). Both a non-GST bill and a GST invoice with `gst_type = 'nil'` are "no-tax" vouchers — `isNilRated()` in `src/utils/gstState.ts` is the single source of truth. Line rates are forced to 0% in `invoiceService.createInvoice()` *and* in the billing UI, the print/PDF/WhatsApp output drops every tax column and titles the document `BILL OF SUPPLY`, and such vouchers are excluded from GSTR-1 / HSN Table 12 while remaining in the sales register and turnover. On a non-GST bill the intra/inter/nil choice is stored for register classification only.
+- **Walk-in Customers (`parties.is_walkin`)**: a party created with a name only. `partyService.incompleteProfile()` derives the flag (no phone **and** no GSTIN) on create and update, so it clears itself when the profile is completed and existing bills stay linked to the same ledger. Billing offers "Walk-in Customer (name only)", confirms once before saving an incomplete profile, and the saved bill / party screens expose "Update Customer Details".
+- **Desktop Pairing & Cleartext HTTP**: the desktop listens on `0.0.0.0:4000` and shows a QR containing `{v, app:'rightserve-sync', url, key}`. `ScanDesktopQrScreen` (Expo 54 `CameraView` from `expo-camera` ~17) reads it, `syncService.saveConfig()` stores it and `testConnection()` pings immediately. Release Android needs `usesCleartextTraffic` (`app.json` + `android/app/src/main/AndroidManifest.xml`), iOS relies on `NSAllowsLocalNetworking`. The API key is **required**; `normalizeBaseUrl()` strips a pasted `/api` or `/api/sync/...` suffix. Sync merges by natural keys and never by licence key, and each device keeps its own `company` row.
+- **Licence `product` Gate**: keys carry `product` (`desktop` | `mobile` | `both`); `licenseProduct()` treats a missing value as `desktop` (backward compatible), and `isMobileProduct()` is checked in both `evaluate()` and `installLicenseKey()` so a desktop key can neither be installed nor keep an existing install writable.
 - **expo-file-system v19 compatibility**: File operations import from `expo-file-system/legacy` to maintain full synchronous document directory and file sharing compatibility.
+
+---
+
+## 5. Session Log — Non-GST Bills, Walk-in Customers & Desktop QR Pairing
+
+**Date**: September 3, 2026  
+**Branch**: `arena/01a06728-fmcg-mobile-app` (from `main` @ `ec980fe`)  
+**App version**: 1.1.0 (Android `versionCode` 2, iOS `buildNumber` 2)
+
+### What changed
+- **Billing**: `Bill Type` (GST / Non-GST) + supply type `Auto | Intra | Inter | Nil` on
+  `CreateInvoiceScreen`; new `invoices.bill_type` column and `nil` value for `invoices.gst_type`
+  (additive migrations in `src/db/database.ts`); zero-tax maths in `invoiceService`, `gstState.ts`
+  (`isNonGstBill`, `isNilRated`, `supplyTypeLabel`), `printService` (BILL OF SUPPLY layout, no tax
+  columns, declaration strip, supply-type meta), `whatsappService`, `InvoiceDetailScreen`,
+  `InvoiceListScreen` (badge + All/GST/Non-GST filter), `EwayFormScreen` (nil-tax notice).
+- **Reports**: non-GST & nil-rated vouchers excluded from GSTR-1 / HSN Table 12 (new "Outside
+  GSTR-1" card + `nilTotal`), kept in the sales register (`summary.nonGstCount/nonGstTotal`, CSV
+  "Bill Type" column) and on the dashboard (`monthNonGstSales`).
+- **Parties**: `parties.is_walkin`, name-only creation, GSTIN format validation, optional state,
+  walk-in badges + "Update Customer Details" CTAs across billing, party list/detail, and a WhatsApp
+  prompt when no phone number exists.
+- **Desktop sync**: `parsePairingCode()` / `buildPairingCode()`, hardened `normalizeBaseUrl()`,
+  required API key, port 4000 copy, better failure diagnostics, schema-tolerant `insertRow()`,
+  new `ScanDesktopQrScreen` (expo-camera ~17.0.10) wired as `ScanDesktopQr`, redesigned
+  `DesktopSyncScreen` (Scan QR primary, manual entry collapsed, 4-step first-run guide).
+- **Platform**: `usesCleartextTraffic` for release Android (app.json + AndroidManifest with
+  `tools:replace`), expo-camera plugin + updated camera usage strings, version bumps.
+- **Licensing**: `product` payload field, `licenseProduct()` / `isMobileProduct()` /
+  `DESKTOP_KEY_REASON`, gate in `evaluate()` + `installLicenseKey()`, `LicenseStatus.product`,
+  Product row on `LicenseScreen`, mobile-key explainer on `ActivationScreen`.
+- **Tests**: `scripts/verify_system.mjs` extended from 12 → 16 scenarios (walk-in lifecycle,
+  non-GST intra/inter/nil storage, GSTR-1 exclusion vs register coverage, pairing-QR parsing).
+  `npx tsc --noEmit` clean; `npx expo export --platform android` bundles successfully.
+
+### Rebuild notes
+`expo-camera` is a new native module and `usesCleartextTraffic` only applies to fresh builds, so
+run `npx expo prebuild --clean` (or an EAS build) before testing QR pairing on a device:
+`eas build -p android --profile preview`.

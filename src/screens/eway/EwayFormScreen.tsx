@@ -20,6 +20,7 @@ import { StateSelect } from '../../components/common/StateSelect';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { getTodayIso, formatCurrency } from '../../utils/formatters';
+import { isNilRated, supplyTypeLabel } from '../../utils/gstState';
 
 export const EwayFormScreen: React.FC<{ navigation: any; route: any }> = ({
   navigation,
@@ -106,6 +107,16 @@ export const EwayFormScreen: React.FC<{ navigation: any; route: any }> = ({
         setCgst(String(draft.cgst || 0));
         setSgst(String(draft.sgst || 0));
         setIgst(String(draft.igst || 0));
+
+        // Non-GST bills (bill of supply) and nil-rated supplies still need an
+        // e-way bill for the movement of goods, but every tax field is nil.
+        const inv = await invoiceService.getInvoiceById(invId);
+        if (inv && isNilRated(inv)) {
+          Alert.alert(
+            'Non-GST / Nil-rated Bill',
+            `${inv.invoice_no} is a ${supplyTypeLabel(inv).toLowerCase()} — the e-way bill is generated with nil tax values.`
+          );
+        }
       }
     } catch (e: any) {
       Alert.alert('Error', e.message);

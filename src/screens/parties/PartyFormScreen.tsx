@@ -11,12 +11,15 @@ import { useLicense } from '../../context/LicenseContext';
 import { useBusiness } from '../../context/BusinessContext';
 import { partyService } from '../../services/partyService';
 import { lookupService } from '../../services/lookupService';
+import { isValidGstinFormat } from '../../utils/gstState';
 import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
 import { Input } from '../../components/common/Input';
 import { Select } from '../../components/common/Select';
 import { StateSelect } from '../../components/common/StateSelect';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
+import { Ionicons } from '@expo/vector-icons';
+import { TouchableOpacity } from 'react-native';
 
 export const PartyFormScreen: React.FC<{ navigation: any; route: any }> = ({
   navigation,
@@ -27,6 +30,8 @@ export const PartyFormScreen: React.FC<{ navigation: any; route: any }> = ({
   const { activeBusiness } = useBusiness();
   const editId = route.params?.id;
   const initialType = route.params?.type || 'customer';
+  // Opened from the billing screen as "walk-in customer — name only".
+  const walkInParam = !!route.params?.walkIn;
 
   const [name, setName] = useState('');
   const [type, setType] = useState<'customer' | 'supplier'>(initialType);
@@ -34,8 +39,9 @@ export const PartyFormScreen: React.FC<{ navigation: any; route: any }> = ({
   const [email, setEmail] = useState('');
   const [gstin, setGstin] = useState('');
   const [address, setAddress] = useState('');
-  const [state, setState] = useState('Delhi');
+  const [state, setState] = useState(walkInParam ? '' : 'Delhi');
   const [openingBalance, setOpeningBalance] = useState('0');
+  const [walkIn, setWalkIn] = useState(walkInParam);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -49,8 +55,9 @@ export const PartyFormScreen: React.FC<{ navigation: any; route: any }> = ({
           setEmail(p.email);
           setGstin(p.gstin);
           setAddress(p.address);
-          setState(p.state || 'Delhi');
+          setState(p.state || (walkInParam ? '' : 'Delhi'));
           setOpeningBalance(String(p.opening_balance || 0));
+          setWalkIn(partyService.isWalkIn(p));
         }
       })();
     }
@@ -75,6 +82,13 @@ export const PartyFormScreen: React.FC<{ navigation: any; route: any }> = ({
     }
     if (!name.trim()) {
       Alert.alert('Validation Error', 'Party Name is required');
+      return;
+    }
+    if (gstin.trim() && !isValidGstinFormat(gstin)) {
+      Alert.alert(
+        'Invalid GSTIN',
+        'The GSTIN should be 15 characters (e.g. 07AAAAA0000A1Z5). Leave it blank for an unregistered / walk-in customer.'
+      );
       return;
     }
 
@@ -129,11 +143,30 @@ export const PartyFormScreen: React.FC<{ navigation: any; route: any }> = ({
         </Text>
 
         <Card>
+          {/* Walk-in: only the name is needed, everything else can wait */}
+          <TouchableOpacity
+            style={[styles.walkInToggle, { borderColor: walkIn ? colors.palette.primary : colors.border, backgroundColor: walkIn ? colors.palette.primaryLight : colors.surfaceSubtle }]}
+            activeOpacity={0.8}
+            onPress={() => setWalkIn(!walkIn)}
+          >
+            <Ionicons
+              name={walkIn ? 'checkbox' : 'square-outline'}
+              size={20}
+              color={walkIn ? colors.palette.primaryDark : colors.textMuted}
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.walkInTitle, { color: colors.text }]}>Walk-in customer (name only)</Text>
+              <Text style={[styles.walkInSub, { color: colors.textMuted }]}>
+                Bill them straight away — phone, GSTIN, state and address can be updated here later.
+              </Text>
+            </View>
+          </TouchableOpacity>
+
           <Input
             label="Party / Business Name *"
             value={name}
             onChangeText={setName}
-            placeholder="e.g. Gupta Supermarket"
+            placeholder={walkIn ? 'e.g. Walk-in Customer' : 'e.g. Gupta Supermarket'}
           />
 
           <Select
@@ -167,7 +200,7 @@ export const PartyFormScreen: React.FC<{ navigation: any; route: any }> = ({
           </View>
 
           <Input
-            label="GSTIN Number (15 Digits)"
+            label={walkIn ? 'GSTIN Number (add later if needed)' : 'GSTIN Number (15 Digits)'}
             value={gstin}
             onChangeText={handleGstinChange}
             placeholder="e.g. 07AAAAA0000A1Z5"
@@ -180,6 +213,8 @@ export const PartyFormScreen: React.FC<{ navigation: any; route: any }> = ({
               label="State"
               value={state}
               onChange={(sName) => setState(sName)}
+              allowClear
+              placeholder={walkIn ? 'Optional' : 'Select state...'}
               containerStyle={{ flex: 1 }}
             />
             <Input
@@ -200,10 +235,17 @@ export const PartyFormScreen: React.FC<{ navigation: any; route: any }> = ({
             multiline
             numberOfLines={2}
           />
+
+          {walkIn && (
+            <Text style={{ fontSize: 11, color: colors.textMuted, lineHeight: 16 }}>
+              Only the name is required. The customer is flagged as a walk-in until you add a phone
+              number or GSTIN — the flag clears itself automatically once the profile is complete.
+            </Text>
+          )}
         </Card>
 
         <Button
-          title={editId ? 'Save Changes' : 'Create Party'}
+          title={editId ? 'Save Changes' : walkIn ? 'Save Walk-in Customer' : 'Create Party'}
           onPress={handleSave}
           loading={loading}
           size="lg"
@@ -227,5 +269,23 @@ const styles = StyleSheet.create({
   grid2: {
     flexDirection: 'row',
     gap: 10,
+  },
+  walkInToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 14,
+  },
+  walkInTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  walkInSub: {
+    fontSize: 11,
+    marginTop: 2,
+    lineHeight: 15,
   },
 });

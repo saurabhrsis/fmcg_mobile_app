@@ -134,6 +134,30 @@ export const GstReportScreen: React.FC = () => {
               </View>
             </Card>
 
+            {/* Non-GST bills are outside the return */}
+            <Card>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Outside GSTR-1</Text>
+              <View style={[styles.tableRow, { borderBottomColor: 'transparent' }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.sectionLabel, { color: colors.text }]}>
+                    Non-GST Bills / Nil-rated Supplies
+                  </Text>
+                  <Text style={{ fontSize: 11, color: colors.textMuted }}>
+                    Bills of supply carry no tax, so they are excluded from every GSTR-1 table and
+                    from the portal JSON.
+                  </Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={[styles.countBadge, { color: colors.palette.warning }]}>
+                    {summary.counts.nonGst || 0} Bills
+                  </Text>
+                  <Text style={{ fontSize: 11, color: colors.textMuted }}>
+                    {formatCurrency(summary.nilTotal || 0)}
+                  </Text>
+                </View>
+              </View>
+            </Card>
+
             {/* B2B Invoices Detail List */}
             {summary.b2b.length > 0 && (
               <Card>

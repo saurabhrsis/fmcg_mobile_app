@@ -22,7 +22,9 @@ import { backupService } from './backupService';
  *      GET  {base}/api/sync/ping   → reachability check
  *      GET  {base}/api/sync/pull   → returns a sync package (desktop data)
  *      POST {base}/api/sync/push   → receives this device's sync package
- *    An optional API key is sent as "Authorization: Bearer <key>".
+ *    The API key from the desktop pairing QR is REQUIRED and is sent as
+ *    "Authorization: Bearer <key>". Pairing itself is done by scanning the QR
+ *    shown on the desktop (parsePairingCode) — no URL typing needed.
  *
  * MERGE STRATEGY (non-destructive):
  * Auto-increment ids differ between devices, so rows are matched by their
@@ -32,6 +34,11 @@ import { backupService } from './backupService';
 
 export const SYNC_FORMAT = 'rightserve-sync/1';
 
+/**
+ * Tables included in a sync package. `company` travels with the package for
+ * completeness but is deliberately NOT merged — each device keeps its own
+ * company row, and firms are matched through `businesses` (by name) instead.
+ */
 const SYNC_TABLES = [
   'users',
   'company',
@@ -78,6 +85,24 @@ function lower(v: any): string {
   return String(v ?? '').trim().toLowerCase();
 }
 
+/** Column names of a local table, cached — used to ignore unknown incoming fields. */
+const tableColumnsCache = new Map<string, Set<string>>();
+
+async function tableColumns(db: SQLite.SQLiteDatabase, table: string): Promise<Set<string>> {
+  const cached = tableColumnsCache.get(table);
+  if (cached) return cached;
+  const cols = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(${table})`);
+  const set = new Set(cols.map((c) => c.name));
+  tableColumnsCache.set(table, set);
+  return set;
+}
+
+/**
+ * Insert one incoming row. Fields that do not exist in the local schema are
+ * dropped, so a phone and a desktop running slightly different versions still
+ * sync (missing local columns such as `bill_type` / `is_walkin` simply keep
+ * their defaults).
+ */
 async function insertRow(
   db: SQLite.SQLiteDatabase,
   table: string,
@@ -86,7 +111,9 @@ async function insertRow(
 ): Promise<number> {
   const data: Record<string, any> = { ...row, ...overrides };
   delete data.id;
-  const keys = Object.keys(data);
+  const cols = await tableColumns(db, table);
+  const keys = Object.keys(data).filter((k) => cols.has(k));
+  if (keys.length === 0) throw new Error(`No matching columns to insert into ${table}`);
   const placeholders = keys.map(() => '?').join(', ');
   const values = keys.map((k) => (data[k] === undefined ? null : data[k]));
   const res = await db.runAsync(
@@ -106,7 +133,49 @@ function normalizeBaseUrl(url: string): string {
   let u = String(url || '').trim();
   if (!u) return '';
   if (!/^https?:\/\//i.test(u)) u = `http://${u}`;
+  u = u.replace(/\/+$/, '');
+  // Accept a pasted endpoint as well as a bare base URL — the /api/sync/...
+  // suffix is stripped so ping / pull / push can be appended safely.
+  u = u.replace(/\/api\/sync(?:\/ping|\/pull|\/push)?$/i, '');
+  u = u.replace(/\/api$/i, '');
   return u.replace(/\/+$/, '');
+}
+
+/**
+ * Parse a desktop pairing QR payload. The desktop portal (Settings → Mobile
+ * Sync) shows a QR containing either
+ *   {"v":1,"app":"rightserve-sync","url":"http://192.168.1.5:4000","key":"rsync_…"}
+ * or the equivalent deep link  rightserve://sync?url=…&key=…
+ * so the phone never has to type a LAN address or an API key.
+ */
+export function parsePairingCode(raw: string): { url: string; apiKey: string } {
+  const text = String(raw || '').trim();
+  if (!text) throw new Error('Empty QR');
+  let url = '';
+  let apiKey = '';
+  try {
+    const j = JSON.parse(text);
+    if (j && (j.app === 'rightserve-sync' || j.v === 1)) {
+      url = j.url || j.u || '';
+      apiKey = j.key || j.k || '';
+    }
+  } catch {
+    const m = text.match(/^rightserve:\/\/sync\?(.*)$/i);
+    if (m) {
+      const q = new URLSearchParams(m[1]);
+      url = q.get('url') || q.get('u') || '';
+      apiKey = q.get('key') || q.get('k') || '';
+    }
+  }
+  url = normalizeBaseUrl(url);
+  apiKey = String(apiKey || '').trim();
+  if (!url || !apiKey) throw new Error('This QR is not a RightServe desktop pairing code.');
+  return { url, apiKey };
+}
+
+/** Build the JSON payload a desktop pairing QR should contain (for tests/docs). */
+export function buildPairingCode(url: string, apiKey: string): string {
+  return JSON.stringify({ v: 1, app: 'rightserve-sync', url: normalizeBaseUrl(url), key: apiKey });
 }
 
 async function fetchWithTimeout(
@@ -522,15 +591,26 @@ export const syncService = {
 
   async testConnection(url: string, apiKey: string): Promise<{ ok: boolean; message: string }> {
     const base = normalizeBaseUrl(url);
-    if (!base) return { ok: false, message: 'Enter the desktop portal URL first' };
+    if (!base) return { ok: false, message: 'Scan the desktop QR or enter the portal URL first' };
+    if (!apiKey.trim()) {
+      return { ok: false, message: 'The API key from the desktop pairing QR is required.' };
+    }
     try {
       const res = await fetchWithTimeout(`${base}/api/sync/ping`, { headers: authHeaders(apiKey) }, 8000);
-      if (res.ok) return { ok: true, message: 'Desktop portal is reachable ✓' };
+      if (res.ok) return { ok: true, message: `Desktop portal is reachable ✓ (${base})` };
+      if (res.status === 401 || res.status === 403) {
+        return { ok: false, message: `Portal rejected the API key (HTTP ${res.status}). Re-scan the pairing QR.` };
+      }
       return { ok: false, message: `Portal responded with HTTP ${res.status}` };
     } catch (e: any) {
       return {
         ok: false,
-        message: 'Could not reach the portal. Check that the desktop app is running and both devices are on the same Wi-Fi network.',
+        message:
+          `Could not reach ${base}. Check that:\n` +
+          '• the desktop app is running with Mobile Sync enabled,\n' +
+          '• the phone and the PC are on the SAME Wi-Fi network (not mobile data or a guest network),\n' +
+          '• the port shown in the QR (default 4000) is not blocked by a firewall,\n' +
+          '• the app build allows plain HTTP on the local network (release Android needs usesCleartextTraffic).',
       };
     }
   },
