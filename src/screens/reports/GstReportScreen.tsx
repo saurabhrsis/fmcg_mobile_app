@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   Alert,
 } from 'react-native';
 import * as Sharing from 'expo-sharing';
@@ -24,18 +23,14 @@ export const GstReportScreen: React.FC = () => {
 
   const [period, setPeriod] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [summary, setSummary] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
 
   const loadReport = async () => {
     if (!activeBusiness) return;
-    setLoading(true);
     try {
       const data = await gstr1Service.generateGstr1Summary(activeBusiness.id, period);
       setSummary(data);
     } catch (e) {
       console.error(e);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -66,8 +61,12 @@ export const GstReportScreen: React.FC = () => {
   };
 
   return (
-    <ScreenWrapper>
-      <ScrollView contentContainerStyle={styles.container}>
+    <ScreenWrapper title="GST & GSTR-1" subtitle="Return periods & GST portal JSON">
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.headerRow}>
           <View>
             <Text style={[styles.title, { color: colors.text }]}>GST Returns & GSTR-1</Text>

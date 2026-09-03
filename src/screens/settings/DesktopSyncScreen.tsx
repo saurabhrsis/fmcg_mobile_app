@@ -214,8 +214,12 @@ export const DesktopSyncScreen: React.FC<{ navigation: any }> = ({ navigation })
   );
 
   return (
-    <ScreenWrapper>
-      <ScrollView contentContainerStyle={styles.container}>
+    <ScreenWrapper title="Desktop Sync" subtitle="Exchange data with desktop portal">
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={[styles.pageTitle, { color: colors.text }]}>Desktop Portal Sync</Text>
         <Text style={{ fontSize: 11, color: colors.textMuted, marginBottom: 12 }}>
           Two-way data exchange with the RightServe desktop application
@@ -376,6 +380,7 @@ export const DesktopSyncScreen: React.FC<{ navigation: any }> = ({ navigation })
 const styles = StyleSheet.create({
   container: {
     padding: 16,
+    paddingBottom: 60,
   },
   pageTitle: {
     fontSize: 18,

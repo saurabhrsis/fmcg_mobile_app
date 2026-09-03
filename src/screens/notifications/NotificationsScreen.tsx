@@ -38,7 +38,6 @@ export const NotificationsScreen: React.FC<{ navigation: any }> = ({ navigation 
     try {
       const list = await notificationService.getNotifications(activeBusiness.id);
       setItems(list);
-      // Reading the list marks everything as seen — the bell dot clears.
       await notificationService.markAllRead(activeBusiness.id, list);
     } finally {
       setLoaded(true);
@@ -58,13 +57,13 @@ export const NotificationsScreen: React.FC<{ navigation: any }> = ({ navigation 
   };
 
   return (
-    <ScreenWrapper>
+    <ScreenWrapper title="Notifications" subtitle="Stock alerts & reminders">
       <View style={styles.container}>
         <View style={styles.headerRow}>
-          <View>
+          <View style={{ flex: 1, marginRight: 10 }}>
             <Text style={[styles.title, { color: colors.text }]}>Notifications</Text>
             <Text style={{ fontSize: 11, color: colors.textMuted }}>
-              Stock alerts, expiries & pending payments — generated offline
+              Stock alerts, expiries & pending payments
             </Text>
           </View>
           {items.length > 0 && <Badge label={`${items.length}`} variant="primary" />}
@@ -76,7 +75,8 @@ export const NotificationsScreen: React.FC<{ navigation: any }> = ({ navigation 
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.palette.primary]} />
           }
-          contentContainerStyle={{ paddingBottom: 40 }}
+          contentContainerStyle={{ paddingBottom: 60 }}
+          keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
             loaded ? (
               <View style={styles.emptyBox}>
@@ -108,7 +108,7 @@ export const NotificationsScreen: React.FC<{ navigation: any }> = ({ navigation 
                   <Ionicons name={meta.icon} size={20} color={accent} />
                 </View>
                 <View style={{ flex: 1, marginHorizontal: 10 }}>
-                  <Text style={[styles.notifTitle, { color: colors.text }]} numberOfLines={2}>
+                  <Text style={[styles.notifTitle, { color: colors.text }] } numberOfLines={2}>
                     {item.title}
                   </Text>
                   <Text style={{ fontSize: 11.5, color: colors.textMuted, marginTop: 2 }} numberOfLines={2}>

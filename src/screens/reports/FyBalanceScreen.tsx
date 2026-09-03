@@ -37,7 +37,6 @@ export const FyBalanceScreen: React.FC = () => {
     })();
   }, [selectedFy, activeBusiness]);
 
-
   const handleExport = async () => {
     if (!report) return;
     try {
@@ -62,8 +61,12 @@ export const FyBalanceScreen: React.FC = () => {
   };
 
   return (
-    <ScreenWrapper>
-      <ScrollView contentContainerStyle={styles.container}>
+    <ScreenWrapper title="FY Balance Statement" subtitle="Annual turnover, margin & closing stock">
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={[styles.title, { color: colors.text }]}>Financial Year Statement</Text>
         <Text style={{ fontSize: 11, color: colors.textMuted, marginBottom: 12 }}>
           Annual turnover, collections, vendor payouts & gross margin

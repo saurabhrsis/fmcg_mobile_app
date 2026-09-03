@@ -76,7 +76,6 @@ export const CreatePaymentScreen: React.FC<{ navigation: any; route: any }> = ({
   }, [partyId, type, activeBusiness]);
 
   const handleSave = async () => {
-    // Licensing gate: trial expired / license expired => read-only mode.
     const gate = ensureWritable();
     if (!gate.allowed) {
       Alert.alert('Read-Only Mode', gate.reason || 'Your license is not active.');
@@ -112,8 +111,15 @@ export const CreatePaymentScreen: React.FC<{ navigation: any; route: any }> = ({
   const selectedParty = parties.find((p) => p.id === partyId);
 
   return (
-    <ScreenWrapper>
-      <ScrollView contentContainerStyle={styles.container}>
+    <ScreenWrapper
+      title={type === 'in' ? 'Record Payment In' : 'Record Payment Out'}
+      subtitle={type === 'in' ? 'Money receipt from customer' : 'Payment made to supplier'}
+    >
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={[styles.title, { color: colors.text }]}>
           {type === 'in' ? 'Record Payment In (Receipt)' : 'Record Payment Out'}
         </Text>

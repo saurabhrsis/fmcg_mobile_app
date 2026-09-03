@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -58,10 +58,10 @@ export const UserListScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
   };
 
   return (
-    <ScreenWrapper>
+    <ScreenWrapper title="Users & Permissions" subtitle="Staff operators & access roles">
       <View style={styles.container}>
         <View style={styles.headerRow}>
-          <View>
+          <View style={{ flex: 1, marginRight: 10 }}>
             <Text style={[styles.title, { color: colors.text }]}>Users & Access Control</Text>
             <Text style={{ fontSize: 11, color: colors.textMuted }}>
               Manage billing operators & staff permissions
@@ -79,7 +79,8 @@ export const UserListScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
         <FlatList
           data={users}
           keyExtractor={(u) => String(u.id)}
-          contentContainerStyle={{ padding: 16 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 60 }}
+          keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => (
             <Card style={styles.userCard}>
               <View style={styles.userTop}>

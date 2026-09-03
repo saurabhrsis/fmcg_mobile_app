@@ -8,7 +8,10 @@ import {
   FlatList,
   TextInput,
   ViewStyle,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { STATE_BY_CODE } from '../../utils/gstState';
@@ -45,6 +48,7 @@ export const StateSelect: React.FC<StateSelectProps> = ({
   allowClear = false,
 }) => {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [modalVisible, setModalVisible] = useState(false);
   const [search, setSearch] = useState('');
 
@@ -82,97 +86,114 @@ export const StateSelect: React.FC<StateSelectProps> = ({
         </Text>
         {selected && (
           <View style={[styles.codeBadge, { backgroundColor: colors.palette.primaryLight }]}>
-            <Text style={[styles.codeBadgeText, { color: colors.palette.primary }]}>{selected.code}</Text>
+            <Text style={[styles.codeBadgeText, { color: colors.palette.primaryDark }]}>{selected.code}</Text>
           </View>
         )}
         <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
       </TouchableOpacity>
 
       <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={() => setModalVisible(false)}>
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setModalVisible(false)}
+        <KeyboardAvoidingView
+          style={styles.avoidingView}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <View
-            style={[styles.modalContent, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            onStartShouldSetResponder={() => true}
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setModalVisible(false)}
           >
-            <Text style={[styles.modalTitle, { color: colors.text }]}>{label || 'Select State'}</Text>
-
-            <View style={[styles.searchBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
-              <Ionicons name="search" size={16} color={colors.textMuted} />
-              <TextInput
-                style={[styles.searchInput, { color: colors.text }]}
-                placeholder="Search state or code..."
-                placeholderTextColor={colors.textMuted}
-                value={search}
-                onChangeText={setSearch}
-                autoCorrect={false}
-              />
-              {search.length > 0 && (
-                <TouchableOpacity onPress={() => setSearch('')}>
-                  <Ionicons name="close-circle" size={16} color={colors.textMuted} />
+            <View
+              style={[
+                styles.modalContent,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  paddingBottom: Math.max(insets.bottom, 16) + 12,
+                },
+              ]}
+              onStartShouldSetResponder={() => true}
+            >
+              <View style={styles.modalHeaderRow}>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>{label || 'Select State'}</Text>
+                <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeBtn}>
+                  <Ionicons name="close" size={20} color={colors.textMuted} />
                 </TouchableOpacity>
-              )}
-            </View>
+              </View>
 
-            <FlatList
-              data={filtered}
-              keyExtractor={(item) => item.code}
-              keyboardShouldPersistTaps="handled"
-              ListHeaderComponent={
-                allowClear ? (
-                  <TouchableOpacity
-                    style={styles.optionItem}
-                    onPress={() => {
-                      onChange('', '');
-                      setModalVisible(false);
-                    }}
-                  >
-                    <Text style={[styles.optionText, { color: colors.textMuted, fontStyle: 'italic' }]}>
-                      — Clear selection —
-                    </Text>
+              <View style={[styles.searchBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
+                <Ionicons name="search" size={16} color={colors.textMuted} />
+                <TextInput
+                  style={[styles.searchInput, { color: colors.text }]}
+                  placeholder="Search state or code..."
+                  placeholderTextColor={colors.textMuted}
+                  value={search}
+                  onChangeText={setSearch}
+                  autoCorrect={false}
+                />
+                {search.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearch('')}>
+                    <Ionicons name="close-circle" size={16} color={colors.textMuted} />
                   </TouchableOpacity>
-                ) : null
-              }
-              ListEmptyComponent={
-                <Text style={[styles.emptyText, { color: colors.textMuted }]}>No matching state</Text>
-              }
-              renderItem={({ item }) => {
-                const isSel = selected?.code === item.code;
-                return (
-                  <TouchableOpacity
-                    style={[
-                      styles.optionItem,
-                      { backgroundColor: isSel ? colors.palette.primaryLight : 'transparent' },
-                    ]}
-                    onPress={() => {
-                      onChange(item.name, item.code);
-                      setModalVisible(false);
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.optionText,
-                        {
-                          color: isSel ? colors.palette.primaryDark : colors.text,
-                          fontWeight: isSel ? '700' : '400',
-                        },
-                      ]}
+                )}
+              </View>
+
+              <FlatList
+                data={filtered}
+                keyExtractor={(item) => item.code}
+                keyboardShouldPersistTaps="handled"
+                ListHeaderComponent={
+                  allowClear ? (
+                    <TouchableOpacity
+                      style={styles.optionItem}
+                      onPress={() => {
+                        onChange('', '');
+                        setModalVisible(false);
+                      }}
                     >
-                      {item.name}
-                    </Text>
-                    <View style={styles.optionRight}>
-                      <Text style={[styles.optionCode, { color: colors.textMuted }]}>{item.code}</Text>
-                      {isSel && <Ionicons name="checkmark" size={18} color={colors.palette.primary} />}
-                    </View>
-                  </TouchableOpacity>
-                );
-              }}
-            />
-          </View>
-        </TouchableOpacity>
+                      <Text style={[styles.optionText, { color: colors.textMuted, fontStyle: 'italic' }]}>
+                        — Clear selection —
+                      </Text>
+                    </TouchableOpacity>
+                  ) : null
+                }
+                ListEmptyComponent={
+                  <Text style={[styles.emptyText, { color: colors.textMuted }]}>No matching state</Text>
+                }
+                renderItem={({ item }) => {
+                  const isSel = selected?.code === item.code;
+                  return (
+                    <TouchableOpacity
+                      style={[
+                        styles.optionItem,
+                        { backgroundColor: isSel ? colors.palette.primaryLight : 'transparent' },
+                      ]}
+                      onPress={() => {
+                        onChange(item.name, item.code);
+                        setModalVisible(false);
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.optionText,
+                          {
+                            color: isSel ? colors.palette.primaryDark : colors.text,
+                            fontWeight: isSel ? '700' : '500',
+                          },
+                        ]}
+                      >
+                        {item.name}
+                      </Text>
+                      <View style={styles.optionRight}>
+                        <Text style={[styles.optionCode, { color: colors.textMuted }]}>{item.code}</Text>
+                        {isSel && <Ionicons name="checkmark" size={18} color={colors.palette.primary} />}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            </View>
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -209,6 +230,9 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
+  avoidingView: {
+    flex: 1,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -219,15 +243,37 @@ const styles = StyleSheet.create({
   modalContent: {
     width: '100%',
     maxWidth: 480,
-    maxHeight: 480,
-    borderRadius: 12,
+    maxHeight: 500,
+    borderRadius: 16,
     borderWidth: 1,
     padding: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(150, 150, 150, 0.2)',
   },
   modalTitle: {
     fontSize: 16,
     fontWeight: '700',
-    marginBottom: 10,
+  },
+  closeBtn: {
+    padding: 4,
   },
   searchBox: {
     flexDirection: 'row',
@@ -250,7 +296,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 10,
-    borderRadius: 6,
+    borderRadius: 8,
+    marginVertical: 1,
   },
   optionText: {
     fontSize: 14,

@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   Alert,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
@@ -18,7 +17,6 @@ import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { Select } from '../../components/common/Select';
-import { Ionicons } from '@expo/vector-icons';
 
 export const DataImportScreen: React.FC = () => {
   const { colors } = useTheme();
@@ -96,8 +94,12 @@ export const DataImportScreen: React.FC = () => {
   };
 
   return (
-    <ScreenWrapper>
-      <ScrollView contentContainerStyle={styles.container}>
+    <ScreenWrapper title="CSV Data Import" subtitle="Import products and parties from CSV">
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={[styles.title, { color: colors.text }]}>CSV Data Migration</Text>
         <Text style={{ fontSize: 11, color: colors.textMuted, marginBottom: 12 }}>
           Import product master lists & customer records from Marg, Vyapar, Tally or Excel

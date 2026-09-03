@@ -8,7 +8,10 @@ import {
   Alert,
   Modal,
   FlatList,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { useLicense } from '../../context/LicenseContext';
 import { useBusiness } from '../../context/BusinessContext';
@@ -37,6 +40,7 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
   route,
 }) => {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { ensureWritable } = useLicense();
   const { activeBusiness } = useBusiness();
   const { user } = useAuth();
@@ -57,21 +61,18 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
   const [notes, setNotes] = useState('');
 
   // Optional tax-invoice details (Ship-to, dispatch, order refs, e-Invoice…)
-  // Grouped in a collapsible section like the desktop edition. Nothing is mandatory.
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [companyFeatures, setCompanyFeatures] = useState<CompanyFeatures>({});
 
   // Consignee (Ship To)
-  const [shipToSame, setShipToSame] = useState(false); // ship-to = customer address
+  const [shipToSame, setShipToSame] = useState(false);
   const [consigneeName, setConsigneeName] = useState('');
   const [consigneeGstin, setConsigneeGstin] = useState('');
   const [consigneeAddress, setConsigneeAddress] = useState('');
   const [consigneeState, setConsigneeState] = useState('');
   const [placeOfSupply, setPlaceOfSupply] = useState('');
 
-  // GST tax type — 'auto' follows the state comparison (intra → CGST+SGST,
-  // inter → IGST). SEZ units (e.g. MIHAN Nagpur) can force IGST even when the
-  // customer & company are in the same state; 'intra' forces CGST+SGST.
+  // GST tax type
   const [gstType, setGstType] = useState<'auto' | 'intra' | 'inter'>('auto');
 
   // Order & References
@@ -101,8 +102,7 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
   const [lineEditorModal, setLineEditorModal] = useState(false);
   const [editingLineIndex, setEditingLineIndex] = useState<number | null>(null);
 
-  // Party search & inline quick-add (create a new customer/supplier without
-  // leaving the voucher screen).
+  // Party search & inline quick-add
   const [partySearch, setPartySearch] = useState('');
   const [addingParty, setAddingParty] = useState(false);
   const [newPartyName, setNewPartyName] = useState('');
@@ -142,7 +142,6 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
       const allItems = await itemService.getAllItems(activeBusiness.id);
       setItemsList(allItems);
 
-      // Which optional bill-detail groups are enabled (Feature Config screen).
       const feats = await businessService.getCompanyFeatures();
       setCompanyFeatures(feats);
     })();
@@ -163,8 +162,6 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
   const extraDiscNum = Number(extraDiscount) || 0;
   const grandTotal = Math.max(0, round2(totalGross - extraDiscNum));
 
-  // What would 'Auto' resolve to for the current party / ship-to / place of
-  // supply? Used for the chip hint and the CGST/SGST vs IGST breakdown.
   const autoInter = isInterState(activeBusiness, {
     party_state: selectedParty?.state,
     party_gstin: selectedParty?.gstin,
@@ -234,7 +231,6 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
   };
 
   const handleSaveInvoice = async () => {
-    // Licensing gate: trial expired / license expired => read-only mode.
     const gate = ensureWritable();
     if (!gate.allowed) {
       Alert.alert('Read-Only Mode', gate.reason || 'Your license is not active.');
@@ -247,7 +243,6 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
 
     setLoading(true);
     try {
-      // Ship To = customer's own address when the checkbox is ticked.
       const shipTo = shipToSame && selectedParty
         ? {
             consignee_name: selectedParty.name,
@@ -310,7 +305,6 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
     }
   };
 
-  // Feature toggles default ON when not configured (same as desktop).
   const featOn = (k: keyof CompanyFeatures) =>
     (companyFeatures as any)[k] === undefined ? true : !!(companyFeatures as any)[k];
   const showConsignee = featOn('billConsignee');
@@ -328,7 +322,6 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
     irn, ackNo, ackDate,
   ].filter((v) => v && String(v).trim()).length;
 
-  // Party helpers — search filter + inline creation.
   const partyTypeNeeded = type === 'purchase' || noteKind === 'debit' ? 'supplier' : 'customer';
   const partyTypeLabel = partyTypeNeeded === 'supplier' ? 'Supplier' : 'Customer';
 
@@ -367,7 +360,6 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
         state: newPartyState,
         address: newPartyAddress,
       });
-      // Refresh the list, auto-select the new party and close the modal.
       const pList = await partyService.getAllParties(partyTypeNeeded, undefined, activeBusiness!.id);
       setParties(pList);
       setSelectedParty(created);
@@ -381,14 +373,18 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
     }
   };
 
+  const screenTitle = noteKind ? `${noteKind.toUpperCase()} NOTE` : type === 'quotation' ? 'QUOTATION' : `NEW ${type.toUpperCase()}`;
+
   return (
-    <ScreenWrapper>
-      <ScrollView contentContainerStyle={styles.container}>
+    <ScreenWrapper title={screenTitle} subtitle={invoiceNo ? `No: ${invoiceNo}` : undefined}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header Title */}
         <View style={styles.headerRow}>
-          <Text style={[styles.title, { color: colors.text }]}>
-            {noteKind ? `${noteKind.toUpperCase()} NOTE` : type === 'quotation' ? 'QUOTATION' : `NEW ${type.toUpperCase()}`}
-          </Text>
+          <Text style={[styles.title, { color: colors.text }]}>{screenTitle}</Text>
           <Badge label={type.toUpperCase()} variant="primary" />
         </View>
 
@@ -433,7 +429,7 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
             <Ionicons name="search" size={20} color={colors.palette.primary} />
           </TouchableOpacity>
 
-          {/* GST Tax Type — Auto / CGST+SGST / IGST (SEZ override) */}
+          {/* GST Tax Type */}
           <Text style={[styles.inputLabel, { color: colors.text, marginTop: 12 }]}>GST Tax Type</Text>
           <View style={styles.gstTypeRow}>
             {([
@@ -591,7 +587,7 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
           />
         </Card>
 
-        {/* Invoice Details — Ship To, Order Refs, Dispatch/Transport, e-Invoice */}
+        {/* Invoice Details */}
         {anyDetailGroup && (
           <Card>
             <TouchableOpacity
@@ -619,7 +615,6 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
 
             {detailsOpen && (
               <View style={{ marginTop: 12 }}>
-                {/* Consignee (Ship To) */}
                 {showConsignee && (
                   <View style={[styles.detailGroup, { borderColor: colors.border }]}>
                     <View style={styles.detailGroupHead}>
@@ -627,7 +622,6 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
                       <Text style={[styles.detailGroupTitle, { color: colors.text }]}>Consignee (Ship To)</Text>
                     </View>
 
-                    {/* Same-as-customer checkbox */}
                     <TouchableOpacity
                       style={styles.checkboxRow}
                       activeOpacity={0.7}
@@ -682,7 +676,6 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
                   </View>
                 )}
 
-                {/* Order & References */}
                 {showOrderRef && (
                   <View style={[styles.detailGroup, { borderColor: colors.border }]}>
                     <View style={styles.detailGroupHead}>
@@ -701,7 +694,6 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
                   </View>
                 )}
 
-                {/* Dispatch / Transport */}
                 {showDispatch && (
                   <View style={[styles.detailGroup, { borderColor: colors.border }]}>
                     <View style={styles.detailGroupHead}>
@@ -726,7 +718,6 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
                   </View>
                 )}
 
-                {/* e-Invoice (IRN) */}
                 {showEInvoice && (
                   <View style={[styles.detailGroup, { borderColor: colors.border }]}>
                     <View style={styles.detailGroupHead}>
@@ -755,150 +746,203 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
           style={{ marginTop: 8 }}
         />
 
-        {/* Party Picker Modal — search + quick-add */}
-        <Modal visible={partyModal} transparent animationType="slide">
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalBox, { backgroundColor: colors.surface, borderColor: colors.border, maxHeight: '85%' }]}>
-              <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: colors.text }]}>
-                  {addingParty ? `New ${partyTypeLabel}` : `Select ${partyTypeLabel}`}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    if (addingParty) {
-                      resetNewPartyForm();
-                    } else {
-                      setPartySearch('');
-                      setPartyModal(false);
-                    }
-                  }}
-                >
-                  <Ionicons name={addingParty ? 'arrow-back' : 'close'} size={24} color={colors.textMuted} />
-                </TouchableOpacity>
-              </View>
-
-              {addingParty ? (
-                /* Inline quick-add form — create the party without leaving the voucher */
-                <ScrollView keyboardShouldPersistTaps="handled">
-                  <Input
-                    label={`${partyTypeLabel} Name *`}
-                    value={newPartyName}
-                    onChangeText={setNewPartyName}
-                    placeholder={`e.g. ${partyTypeNeeded === 'supplier' ? 'Metro Traders' : 'Sunrise Supermarket'}`}
-                  />
-                  <View style={styles.grid2}>
-                    <Input
-                      label="Phone"
-                      value={newPartyPhone}
-                      onChangeText={setNewPartyPhone}
-                      keyboardType="phone-pad"
-                      placeholder="Mobile number"
-                      containerStyle={{ flex: 1 }}
-                    />
-                    <StateSelect
-                      label="State"
-                      value={newPartyState}
-                      onChange={(name) => setNewPartyState(name)}
-                      containerStyle={{ flex: 1 }}
-                    />
-                  </View>
-                  <Input
-                    label="GSTIN (Optional)"
-                    value={newPartyGstin}
-                    onChangeText={(t) => setNewPartyGstin(t.toUpperCase())}
-                    autoCapitalize="characters"
-                    maxLength={15}
-                    placeholder="15-digit GSTIN"
-                  />
-                  <Input
-                    label="Address (Optional)"
-                    value={newPartyAddress}
-                    onChangeText={setNewPartyAddress}
-                    placeholder="Billing address"
-                  />
-                  <Button
-                    title={`Save & Select ${partyTypeLabel}`}
-                    onPress={handleQuickAddParty}
-                    loading={savingParty}
-                    style={{ marginTop: 4 }}
-                  />
-                </ScrollView>
-              ) : (
-                <>
-                  {/* Search box */}
-                  <Input
-                    value={partySearch}
-                    onChangeText={setPartySearch}
-                    icon="search"
-                    placeholder={`Search ${partyTypeLabel.toLowerCase()} by name, phone or GSTIN...`}
-                    autoCapitalize="none"
-                  />
-
-                  {/* Quick-add button */}
+        {/* Party Picker Modal */}
+        <Modal
+          visible={partyModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => {
+            if (addingParty) resetNewPartyForm();
+            else { setPartySearch(''); setPartyModal(false); }
+          }}
+        >
+          <KeyboardAvoidingView
+            style={styles.modalAvoidingView}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
+            <View style={styles.modalOverlay}>
+              <TouchableOpacity
+                style={styles.modalBackdrop}
+                activeOpacity={1}
+                onPress={() => {
+                  if (addingParty) resetNewPartyForm();
+                  else { setPartySearch(''); setPartyModal(false); }
+                }}
+              />
+              <View
+                style={[
+                  styles.modalBox,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    paddingBottom: Math.max(insets.bottom, 16) + 16,
+                  },
+                ]}
+              >
+                <View style={styles.modalHeader}>
+                  <Text style={[styles.modalTitle, { color: colors.text }]}>
+                    {addingParty ? `New ${partyTypeLabel}` : `Select ${partyTypeLabel}`}
+                  </Text>
                   <TouchableOpacity
-                    style={[styles.addPartyBtn, { backgroundColor: colors.palette.primaryLight }]}
                     onPress={() => {
-                      // Pre-fill the name with what the user was searching for.
-                      setNewPartyName(partySearch.trim());
-                      setAddingParty(true);
+                      if (addingParty) {
+                        resetNewPartyForm();
+                      } else {
+                        setPartySearch('');
+                        setPartyModal(false);
+                      }
                     }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
-                    <Ionicons name="person-add" size={16} color={colors.palette.primaryDark} />
-                    <Text style={{ color: colors.palette.primaryDark, fontWeight: '700', fontSize: 13 }}>
-                      + Add New {partyTypeLabel}
-                      {partySearch.trim() ? ` "${partySearch.trim()}"` : ''}
-                    </Text>
+                    <Ionicons name={addingParty ? 'arrow-back' : 'close'} size={24} color={colors.textMuted} />
                   </TouchableOpacity>
+                </View>
 
-                  <FlatList
-                    data={filteredParties}
-                    keyExtractor={(p) => String(p.id)}
+                {addingParty ? (
+                  <ScrollView
                     keyboardShouldPersistTaps="handled"
-                    ListEmptyComponent={
-                      <View style={{ alignItems: 'center', paddingVertical: 24 }}>
-                        <Ionicons name="people-outline" size={30} color={colors.textMuted} />
-                        <Text style={{ color: colors.textMuted, fontSize: 13, marginTop: 6 }}>
-                          {partySearch.trim()
-                            ? `No ${partyTypeLabel.toLowerCase()} matches "${partySearch.trim()}"`
-                            : `No ${partyTypeLabel.toLowerCase()}s yet — add one above`}
-                        </Text>
-                      </View>
-                    }
-                    renderItem={({ item }) => (
-                      <TouchableOpacity
-                        style={[styles.partyItem, { borderBottomColor: colors.border }]}
-                        onPress={() => {
-                          setSelectedParty(item);
-                          setPartySearch('');
-                          setPartyModal(false);
-                        }}
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.partyItemName, { color: colors.text }]}>{item.name}</Text>
-                          <Text style={{ fontSize: 11, color: colors.textMuted }}>
-                            {item.phone || 'No phone'} • {item.state || 'India'}
-                            {item.gstin ? ` • ${item.gstin}` : ''}
+                    showsVerticalScrollIndicator={false}
+                  >
+                    <Input
+                      label={`${partyTypeLabel} Name *`}
+                      value={newPartyName}
+                      onChangeText={setNewPartyName}
+                      placeholder={`e.g. ${partyTypeNeeded === 'supplier' ? 'Metro Traders' : 'Sunrise Supermarket'}`}
+                      autoFocus
+                    />
+                    <View style={styles.grid2}>
+                      <Input
+                        label="Phone"
+                        value={newPartyPhone}
+                        onChangeText={setNewPartyPhone}
+                        keyboardType="phone-pad"
+                        placeholder="Mobile number"
+                        containerStyle={{ flex: 1 }}
+                      />
+                      <StateSelect
+                        label="State"
+                        value={newPartyState}
+                        onChange={(name) => setNewPartyState(name)}
+                        containerStyle={{ flex: 1 }}
+                      />
+                    </View>
+                    <Input
+                      label="GSTIN (Optional)"
+                      value={newPartyGstin}
+                      onChangeText={(t) => setNewPartyGstin(t.toUpperCase())}
+                      autoCapitalize="characters"
+                      maxLength={15}
+                      placeholder="15-digit GSTIN"
+                    />
+                    <Input
+                      label="Address (Optional)"
+                      value={newPartyAddress}
+                      onChangeText={setNewPartyAddress}
+                      placeholder="Billing address"
+                    />
+                    <Button
+                      title={`Save & Select ${partyTypeLabel}`}
+                      onPress={handleQuickAddParty}
+                      loading={savingParty}
+                      style={{ marginTop: 4 }}
+                    />
+                  </ScrollView>
+                ) : (
+                  <>
+                    <Input
+                      value={partySearch}
+                      onChangeText={setPartySearch}
+                      icon="search"
+                      placeholder={`Search ${partyTypeLabel.toLowerCase()} by name, phone or GSTIN...`}
+                      autoCapitalize="none"
+                    />
+
+                    <TouchableOpacity
+                      style={[styles.addPartyBtn, { backgroundColor: colors.palette.primaryLight }]}
+                      onPress={() => {
+                        setNewPartyName(partySearch.trim());
+                        setAddingParty(true);
+                      }}
+                    >
+                      <Ionicons name="person-add" size={16} color={colors.palette.primaryDark} />
+                      <Text style={{ color: colors.palette.primaryDark, fontWeight: '700', fontSize: 13 }}>
+                        + Add New {partyTypeLabel}
+                        {partySearch.trim() ? ` "${partySearch.trim()}"` : ''}
+                      </Text>
+                    </TouchableOpacity>
+
+                    <FlatList
+                      data={filteredParties}
+                      keyExtractor={(p) => String(p.id)}
+                      keyboardShouldPersistTaps="handled"
+                      ListEmptyComponent={
+                        <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+                          <Ionicons name="people-outline" size={30} color={colors.textMuted} />
+                          <Text style={{ color: colors.textMuted, fontSize: 13, marginTop: 6 }}>
+                            {partySearch.trim()
+                              ? `No ${partyTypeLabel.toLowerCase()} matches "${partySearch.trim()}"`
+                              : `No ${partyTypeLabel.toLowerCase()}s yet — add one above`}
                           </Text>
                         </View>
-                        <Text style={{ fontSize: 12, fontWeight: '700', color: colors.palette.primary }}>
-                          {formatCurrency(item.balance || 0)}
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-                  />
-                </>
-              )}
+                      }
+                      renderItem={({ item }) => (
+                        <TouchableOpacity
+                          style={[styles.partyItem, { borderBottomColor: colors.border }]}
+                          onPress={() => {
+                            setSelectedParty(item);
+                            setPartySearch('');
+                            setPartyModal(false);
+                          }}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.partyItemName, { color: colors.text }]}>{item.name}</Text>
+                            <Text style={{ fontSize: 11, color: colors.textMuted }}>
+                              {item.phone || 'No phone'} • {item.state || 'India'}
+                              {item.gstin ? ` • ${item.gstin}` : ''}
+                            </Text>
+                          </View>
+                          <Text style={{ fontSize: 12, fontWeight: '700', color: colors.palette.primary }}>
+                            {formatCurrency(item.balance || 0)}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    />
+                  </>
+                )}
+              </View>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
 
         {/* Product Picker Modal */}
-        <Modal visible={productModal} transparent animationType="slide">
+        <Modal
+          visible={productModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setProductModal(false)}
+        >
           <View style={styles.modalOverlay}>
-            <View style={[styles.modalBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <TouchableOpacity
+              style={styles.modalBackdrop}
+              activeOpacity={1}
+              onPress={() => setProductModal(false)}
+            />
+            <View
+              style={[
+                styles.modalBox,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  paddingBottom: Math.max(insets.bottom, 16) + 16,
+                },
+              ]}
+            >
               <View style={styles.modalHeader}>
                 <Text style={[styles.modalTitle, { color: colors.text }]}>Select Item / Product</Text>
-                <TouchableOpacity onPress={() => setProductModal(false)}>
+                <TouchableOpacity
+                  onPress={() => setProductModal(false)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
                   <Ionicons name="close" size={24} color={colors.textMuted} />
                 </TouchableOpacity>
               </View>
@@ -906,6 +950,7 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
               <FlatList
                 data={itemsList}
                 keyExtractor={(it) => String(it.id)}
+                keyboardShouldPersistTaps="handled"
                 renderItem={({ item }) => (
                   <TouchableOpacity
                     style={[styles.partyItem, { borderBottomColor: colors.border }]}
@@ -928,132 +973,162 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
         </Modal>
 
         {/* Line Item Editor Modal */}
-        <Modal visible={lineEditorModal} transparent animationType="slide">
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalBox, { backgroundColor: colors.surface, borderColor: colors.border, maxHeight: '85%' }]}>
-              <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: colors.text }]}>{currentLine.item_name}</Text>
-                <TouchableOpacity onPress={() => setLineEditorModal(false)}>
-                  <Ionicons name="close" size={24} color={colors.textMuted} />
-                </TouchableOpacity>
-              </View>
+        <Modal
+          visible={lineEditorModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setLineEditorModal(false)}
+        >
+          <KeyboardAvoidingView
+            style={styles.modalAvoidingView}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
+            <View style={styles.modalOverlay}>
+              <TouchableOpacity
+                style={styles.modalBackdrop}
+                activeOpacity={1}
+                onPress={() => setLineEditorModal(false)}
+              />
+              <View
+                style={[
+                  styles.modalBox,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    paddingBottom: Math.max(insets.bottom, 16) + 16,
+                  },
+                ]}
+              >
+                <View style={styles.modalHeader}>
+                  <Text style={[styles.modalTitle, { color: colors.text }]}>{currentLine.item_name}</Text>
+                  <TouchableOpacity
+                    onPress={() => setLineEditorModal(false)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="close" size={24} color={colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
 
-              <ScrollView>
-                {/* Unit Ladder Picker */}
-                {currentAvailableUnits.length > 1 && (
-                  <View style={{ marginBottom: 12 }}>
-                    <Text style={[styles.inputLabel, { color: colors.text }]}>Packaging Unit</Text>
-                    <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-                      {currentAvailableUnits.map((u, idx) => (
-                        <TouchableOpacity
-                          key={idx}
-                          style={[
-                            styles.unitChip,
-                            {
-                              backgroundColor: currentLine.unit === u.unit_name ? colors.palette.primary : colors.surfaceSubtle,
-                            },
-                          ]}
-                          onPress={() => {
-                            const p = type === 'purchase' ? u.purchase_price : u.sale_price;
-                            setCurrentLine({
-                              ...currentLine,
-                              unit: u.unit_name,
-                              unit_factor: u.factor,
-                              price: p || currentLine.price,
-                            });
-                          }}
-                        >
-                          <Text
-                            style={{
-                              color: currentLine.unit === u.unit_name ? '#ffffff' : colors.text,
-                              fontSize: 12,
-                              fontWeight: '600',
+                <ScrollView
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={false}
+                >
+                  {/* Unit Ladder Picker */}
+                  {currentAvailableUnits.length > 1 && (
+                    <View style={{ marginBottom: 12 }}>
+                      <Text style={[styles.inputLabel, { color: colors.text }]}>Packaging Unit</Text>
+                      <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                        {currentAvailableUnits.map((u, idx) => (
+                          <TouchableOpacity
+                            key={idx}
+                            style={[
+                              styles.unitChip,
+                              {
+                                backgroundColor: currentLine.unit === u.unit_name ? colors.palette.primary : colors.surfaceSubtle,
+                              },
+                            ]}
+                            onPress={() => {
+                              const p = type === 'purchase' ? u.purchase_price : u.sale_price;
+                              setCurrentLine({
+                                ...currentLine,
+                                unit: u.unit_name,
+                                unit_factor: u.factor,
+                                price: p || currentLine.price,
+                              });
                             }}
                           >
-                            {u.unit_name} ({u.factor}x)
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
+                            <Text
+                              style={{
+                                color: currentLine.unit === u.unit_name ? '#ffffff' : colors.text,
+                                fontSize: 12,
+                                fontWeight: '600',
+                              }}
+                            >
+                              {u.unit_name} ({u.factor}x)
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
                     </View>
+                  )}
+
+                  <View style={styles.grid2}>
+                    <Input
+                      label="Quantity"
+                      value={String(currentLine.qty || '')}
+                      onChangeText={(t) => setCurrentLine({ ...currentLine, qty: parseFloat(t) || 0 })}
+                      keyboardType="numeric"
+                      containerStyle={{ flex: 1 }}
+                    />
+                    <Input
+                      label="Rate / Price (₹)"
+                      value={String(currentLine.price || '')}
+                      onChangeText={(t) => setCurrentLine({ ...currentLine, price: parseFloat(t) || 0 })}
+                      keyboardType="numeric"
+                      containerStyle={{ flex: 1 }}
+                    />
                   </View>
-                )}
 
-                <View style={styles.grid2}>
-                  <Input
-                    label="Quantity"
-                    value={String(currentLine.qty || '')}
-                    onChangeText={(t) => setCurrentLine({ ...currentLine, qty: parseFloat(t) || 0 })}
-                    keyboardType="numeric"
-                    containerStyle={{ flex: 1 }}
-                  />
-                  <Input
-                    label="Rate / Price (₹)"
-                    value={String(currentLine.price || '')}
-                    onChangeText={(t) => setCurrentLine({ ...currentLine, price: parseFloat(t) || 0 })}
-                    keyboardType="numeric"
-                    containerStyle={{ flex: 1 }}
-                  />
-                </View>
+                  {/* 3-Level Discounts */}
+                  <View style={styles.grid3}>
+                    <Input
+                      label="Trade Disc %"
+                      value={String(currentLine.disc_trade_pct || '')}
+                      onChangeText={(t) => setCurrentLine({ ...currentLine, disc_trade_pct: parseFloat(t) || 0 })}
+                      keyboardType="numeric"
+                      containerStyle={{ flex: 1 }}
+                    />
+                    <Input
+                      label="Cash Disc %"
+                      value={String(currentLine.disc_cd_pct || '')}
+                      onChangeText={(t) => setCurrentLine({ ...currentLine, disc_cd_pct: parseFloat(t) || 0 })}
+                      keyboardType="numeric"
+                      containerStyle={{ flex: 1 }}
+                    />
+                    <Input
+                      label="Special Disc %"
+                      value={String(currentLine.disc_sd_pct || '')}
+                      onChangeText={(t) => setCurrentLine({ ...currentLine, disc_sd_pct: parseFloat(t) || 0 })}
+                      keyboardType="numeric"
+                      containerStyle={{ flex: 1 }}
+                    />
+                  </View>
 
-                {/* 3-Level Discounts (TD, CD, SD) */}
-                <View style={styles.grid3}>
-                  <Input
-                    label="Trade Disc %"
-                    value={String(currentLine.disc_trade_pct || '')}
-                    onChangeText={(t) => setCurrentLine({ ...currentLine, disc_trade_pct: parseFloat(t) || 0 })}
-                    keyboardType="numeric"
-                    containerStyle={{ flex: 1 }}
-                  />
-                  <Input
-                    label="Cash Disc %"
-                    value={String(currentLine.disc_cd_pct || '')}
-                    onChangeText={(t) => setCurrentLine({ ...currentLine, disc_cd_pct: parseFloat(t) || 0 })}
-                    keyboardType="numeric"
-                    containerStyle={{ flex: 1 }}
-                  />
-                  <Input
-                    label="Special Disc %"
-                    value={String(currentLine.disc_sd_pct || '')}
-                    onChangeText={(t) => setCurrentLine({ ...currentLine, disc_sd_pct: parseFloat(t) || 0 })}
-                    keyboardType="numeric"
-                    containerStyle={{ flex: 1 }}
-                  />
-                </View>
+                  <View style={styles.grid2}>
+                    <Input
+                      label="GST Rate %"
+                      value={String(currentLine.gst_rate || '')}
+                      onChangeText={(t) => setCurrentLine({ ...currentLine, gst_rate: parseFloat(t) || 0 })}
+                      keyboardType="numeric"
+                      containerStyle={{ flex: 1 }}
+                    />
+                    <Input
+                      label="Batch No"
+                      value={currentLine.batch_no || ''}
+                      onChangeText={(t) => setCurrentLine({ ...currentLine, batch_no: t })}
+                      placeholder="e.g. B-001"
+                      containerStyle={{ flex: 1 }}
+                    />
+                  </View>
 
-                <View style={styles.grid2}>
-                  <Input
-                    label="GST Rate %"
-                    value={String(currentLine.gst_rate || '')}
-                    onChangeText={(t) => setCurrentLine({ ...currentLine, gst_rate: parseFloat(t) || 0 })}
-                    keyboardType="numeric"
-                    containerStyle={{ flex: 1 }}
-                  />
-                  <Input
-                    label="Batch No"
-                    value={currentLine.batch_no || ''}
-                    onChangeText={(t) => setCurrentLine({ ...currentLine, batch_no: t })}
-                    placeholder="e.g. B-001"
-                    containerStyle={{ flex: 1 }}
-                  />
-                </View>
+                  {currentLine.track_serials ? (
+                    <Input
+                      label="Serial Numbers (comma separated)"
+                      value={currentLine.serials || ''}
+                      onChangeText={(t) => setCurrentLine({ ...currentLine, serials: t })}
+                      placeholder="e.g. SN101, SN102"
+                    />
+                  ) : null}
 
-                {currentLine.track_serials ? (
-                  <Input
-                    label="Serial Numbers (comma separated)"
-                    value={currentLine.serials || ''}
-                    onChangeText={(t) => setCurrentLine({ ...currentLine, serials: t })}
-                    placeholder="e.g. SN101, SN102"
+                  <Button
+                    title="Apply Item"
+                    onPress={handleSaveLine}
+                    style={{ marginTop: 12 }}
                   />
-                ) : null}
-
-                <Button
-                  title="Apply Item"
-                  onPress={handleSaveLine}
-                  style={{ marginTop: 12 }}
-                />
-              </ScrollView>
+                </ScrollView>
+              </View>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
       </ScrollView>
     </ScreenWrapper>
@@ -1201,17 +1276,34 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
   },
+  modalAvoidingView: {
+    flex: 1,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
   },
   modalBox: {
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     borderWidth: 1,
     padding: 20,
-    maxHeight: '80%',
+    maxHeight: '85%',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 12,
+      },
+    }),
   },
   modalHeader: {
     flexDirection: 'row',

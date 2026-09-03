@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,9 +16,7 @@ import { SearchBar } from '../../components/common/SearchBar';
 import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
 import { EmptyState } from '../../components/common/EmptyState';
-import { formatDate } from '../../utils/formatters';
 import { useFocusEffect } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
 
 export const SerialLookupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { colors } = useTheme();
@@ -57,7 +55,7 @@ export const SerialLookupScreen: React.FC<{ navigation: any }> = ({ navigation }
   };
 
   return (
-    <ScreenWrapper>
+    <ScreenWrapper title="Serial Registry" subtitle="Unit barcode & warranty trace">
       <View style={styles.container}>
         {/* Summary Counter Bar */}
         <View style={styles.statBar}>
@@ -120,6 +118,7 @@ export const SerialLookupScreen: React.FC<{ navigation: any }> = ({ navigation }
           data={serials}
           keyExtractor={(s) => String(s.id)}
           contentContainerStyle={{ padding: 16, paddingBottom: 60 }}
+          keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

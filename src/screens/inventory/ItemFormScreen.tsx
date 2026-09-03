@@ -8,7 +8,10 @@ import {
   Alert,
   Modal,
   FlatList,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { useLicense } from '../../context/LicenseContext';
 import { useBusiness } from '../../context/BusinessContext';
@@ -28,6 +31,7 @@ export const ItemFormScreen: React.FC<{ navigation: any; route: any }> = ({
   route,
 }) => {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { ensureWritable } = useLicense();
   const { activeBusiness } = useBusiness();
   const editId = route.params?.id;
@@ -235,8 +239,12 @@ export const ItemFormScreen: React.FC<{ navigation: any; route: any }> = ({
   };
 
   return (
-    <ScreenWrapper>
-      <ScrollView contentContainerStyle={styles.container}>
+    <ScreenWrapper title={editId ? 'Edit Product' : 'Add New Product'} subtitle="Inventory item details">
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={[styles.title, { color: colors.text }]}>
           {editId ? 'Edit Product' : 'Add New Product'}
         </Text>
@@ -449,103 +457,165 @@ export const ItemFormScreen: React.FC<{ navigation: any; route: any }> = ({
         />
 
         {/* HSN Search Modal */}
-        <Modal visible={hsnModal} transparent animationType="slide">
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: colors.text }]}>Search HSN / SAC</Text>
-                <TouchableOpacity onPress={() => setHsnModal(false)}>
-                  <Ionicons name="close" size={24} color={colors.textMuted} />
-                </TouchableOpacity>
-              </View>
-
-              <Input
-                placeholder="Type product or 4-digit code (e.g. Milk, 2202)..."
-                value={hsnSearch}
-                onChangeText={handleSearchHsn}
-                icon="search"
+        <Modal
+          visible={hsnModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setHsnModal(false)}
+        >
+          <KeyboardAvoidingView
+            style={styles.modalAvoidingView}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
+            <View style={styles.modalOverlay}>
+              <TouchableOpacity
+                style={styles.modalBackdrop}
+                activeOpacity={1}
+                onPress={() => setHsnModal(false)}
               />
-
-              <FlatList
-                data={hsnResults}
-                keyExtractor={(item) => item.hsn}
-                renderItem={({ item }) => (
+              <View
+                style={[
+                  styles.modalBox,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    paddingBottom: Math.max(insets.bottom, 16) + 16,
+                  },
+                ]}
+              >
+                <View style={styles.modalHeader}>
+                  <Text style={[styles.modalTitle, { color: colors.text }]}>Search HSN / SAC</Text>
                   <TouchableOpacity
-                    style={[styles.hsnItem, { borderBottomColor: colors.border }]}
-                    onPress={() => handleSelectHsn(item)}
+                    onPress={() => setHsnModal(false)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.hsnCode, { color: colors.palette.primary }]}>
-                        HSN: {item.hsn} ({item.gst}% GST)
-                      </Text>
-                      <Text style={{ fontSize: 12, color: colors.text, marginTop: 2 }}>{item.desc}</Text>
-                    </View>
+                    <Ionicons name="close" size={24} color={colors.textMuted} />
                   </TouchableOpacity>
-                )}
-              />
+                </View>
+
+                <Input
+                  placeholder="Type product or 4-digit code (e.g. Milk, 2202)..."
+                  value={hsnSearch}
+                  onChangeText={handleSearchHsn}
+                  icon="search"
+                  autoFocus
+                />
+
+                <FlatList
+                  data={hsnResults}
+                  keyExtractor={(item) => item.hsn}
+                  keyboardShouldPersistTaps="handled"
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={[styles.hsnItem, { borderBottomColor: colors.border }]}
+                      onPress={() => handleSelectHsn(item)}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.hsnCode, { color: colors.palette.primary }]}>
+                          HSN: {item.hsn} ({item.gst}% GST)
+                        </Text>
+                        <Text style={{ fontSize: 12, color: colors.text, marginTop: 2 }}>{item.desc}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+                />
+              </View>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
 
         {/* Add Packaging Unit Modal */}
-        <Modal visible={unitModal} transparent animationType="slide">
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: colors.text }]}>Add Packaging Level</Text>
-                <TouchableOpacity onPress={() => setUnitModal(false)}>
-                  <Ionicons name="close" size={24} color={colors.textMuted} />
-                </TouchableOpacity>
+        <Modal
+          visible={unitModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setUnitModal(false)}
+        >
+          <KeyboardAvoidingView
+            style={styles.modalAvoidingView}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
+            <View style={styles.modalOverlay}>
+              <TouchableOpacity
+                style={styles.modalBackdrop}
+                activeOpacity={1}
+                onPress={() => setUnitModal(false)}
+              />
+              <View
+                style={[
+                  styles.modalBox,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    paddingBottom: Math.max(insets.bottom, 16) + 16,
+                  },
+                ]}
+              >
+                <View style={styles.modalHeader}>
+                  <Text style={[styles.modalTitle, { color: colors.text }]}>Add Packaging Level</Text>
+                  <TouchableOpacity
+                    onPress={() => setUnitModal(false)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="close" size={24} color={colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={false}
+                >
+                  <Input
+                    label="Packaging Name"
+                    placeholder="e.g. Box, Carton, Pack, Crate"
+                    value={newUnitName}
+                    onChangeText={setNewUnitName}
+                    autoFocus
+                  />
+
+                  <Input
+                    label={`Conversion Factor (How many ${baseUnit} in 1 of this?)`}
+                    placeholder="e.g. 12 or 24 or 2400"
+                    value={newUnitFactor}
+                    onChangeText={setNewUnitFactor}
+                    keyboardType="numeric"
+                  />
+
+                  <View style={styles.grid2}>
+                    <Input
+                      label="Unit Sale Price (₹)"
+                      placeholder="Auto calculated if empty"
+                      value={newUnitSalePrice}
+                      onChangeText={setNewUnitSalePrice}
+                      keyboardType="numeric"
+                      containerStyle={{ flex: 1 }}
+                    />
+                    <Input
+                      label="Unit Purchase Price (₹)"
+                      placeholder="Auto calculated"
+                      value={newUnitPurchasePrice}
+                      onChangeText={setNewUnitPurchasePrice}
+                      keyboardType="numeric"
+                      containerStyle={{ flex: 1 }}
+                    />
+                  </View>
+
+                  <Input
+                    label="Packaging Barcode / EAN (Optional)"
+                    placeholder="Scan or type barcode..."
+                    value={newUnitBarcode}
+                    onChangeText={setNewUnitBarcode}
+                  />
+
+                  <Button
+                    title="Add Packaging Level"
+                    onPress={handleAddUnitLevel}
+                    style={{ marginTop: 8 }}
+                  />
+                </ScrollView>
               </View>
-
-              <Input
-                label="Packaging Name"
-                placeholder="e.g. Box, Carton, Pack, Crate"
-                value={newUnitName}
-                onChangeText={setNewUnitName}
-              />
-
-              <Input
-                label={`Conversion Factor (How many ${baseUnit} in 1 of this?)`}
-                placeholder="e.g. 12 or 24 or 2400"
-                value={newUnitFactor}
-                onChangeText={setNewUnitFactor}
-                keyboardType="numeric"
-              />
-
-              <View style={styles.grid2}>
-                <Input
-                  label="Unit Sale Price (₹)"
-                  placeholder="Auto calculated if empty"
-                  value={newUnitSalePrice}
-                  onChangeText={setNewUnitSalePrice}
-                  keyboardType="numeric"
-                  containerStyle={{ flex: 1 }}
-                />
-                <Input
-                  label="Unit Purchase Price (₹)"
-                  placeholder="Auto calculated"
-                  value={newUnitPurchasePrice}
-                  onChangeText={setNewUnitPurchasePrice}
-                  keyboardType="numeric"
-                  containerStyle={{ flex: 1 }}
-                />
-              </View>
-
-              <Input
-                label="Packaging Barcode / EAN (Optional)"
-                placeholder="Scan or type barcode..."
-                value={newUnitBarcode}
-                onChangeText={setNewUnitBarcode}
-              />
-
-              <Button
-                title="Add Packaging Level"
-                onPress={handleAddUnitLevel}
-                style={{ marginTop: 8 }}
-              />
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
       </ScrollView>
     </ScreenWrapper>
@@ -621,17 +691,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
+  modalAvoidingView: {
+    flex: 1,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
   },
   modalBox: {
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     borderWidth: 1,
     padding: 20,
-    maxHeight: '80%',
+    maxHeight: '85%',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 12,
+      },
+    }),
   },
   modalHeader: {
     flexDirection: 'row',

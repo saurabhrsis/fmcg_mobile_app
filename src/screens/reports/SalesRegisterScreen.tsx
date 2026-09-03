@@ -42,7 +42,6 @@ export const SalesRegisterScreen: React.FC<{ navigation: any }> = ({ navigation 
     setRefreshing(false);
   };
 
-
   const handleExport = async () => {
     try {
       await exportService.exportCsv('Sales_Register' + (from ? `_${from}` : '') + (to ? `_${to}` : ''), [
@@ -63,7 +62,7 @@ export const SalesRegisterScreen: React.FC<{ navigation: any }> = ({ navigation 
   };
 
   return (
-    <ScreenWrapper>
+    <ScreenWrapper title="Sales Register" subtitle="Voucher log and tax breakdown">
       <View style={styles.container}>
         {/* Date Filter Card */}
         <Card style={styles.filterCard}>
@@ -118,6 +117,7 @@ export const SalesRegisterScreen: React.FC<{ navigation: any }> = ({ navigation 
           data={data.rows}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={{ padding: 16, paddingBottom: 60 }}
+          keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

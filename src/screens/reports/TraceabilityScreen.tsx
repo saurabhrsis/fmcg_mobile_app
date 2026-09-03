@@ -35,7 +35,6 @@ export const TraceabilityScreen: React.FC = () => {
     }
   };
 
-
   const handleExport = async () => {
     if (results.serials.length === 0 && results.batches.length === 0) {
       Alert.alert('Nothing to Export', 'Run a search first, then export the matched results.');
@@ -69,8 +68,12 @@ export const TraceabilityScreen: React.FC = () => {
   };
 
   return (
-    <ScreenWrapper>
-      <ScrollView contentContainerStyle={styles.container}>
+    <ScreenWrapper title="Traceability Audit" subtitle="Audit serials and batches from purchase to sale">
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={[styles.title, { color: colors.text }]}>Serial & Batch Traceability</Text>
         <Text style={{ fontSize: 11, color: colors.textMuted, marginBottom: 12 }}>
           Trace inward purchase voucher, batch lot, and outward sales voucher
