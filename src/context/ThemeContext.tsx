@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Platform } from 'react-native';
+import * as NavigationBar from 'expo-navigation-bar';
 import { PALETTES, ThemePalette } from '../theme/palettes';
 
 export interface ThemeColors {
@@ -56,6 +58,17 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const toggleDarkMode = () => setIsDark((prev) => !prev);
+
+  // Edge-to-edge draws the app behind Android's system navigation bar, so the
+  // OS buttons (back / home / recents) float over the app background. Mirror
+  // the app theme: dark buttons in light mode, light buttons in dark mode —
+  // otherwise white buttons vanish on the light background.
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    NavigationBar.setButtonStyleAsync(isDark ? 'light' : 'dark').catch(() => {
+      /* older devices / no-op — leave the OS default */
+    });
+  }, [isDark]);
 
   return (
     <ThemeContext.Provider value={{ colors, paletteKey, isDark, setPaletteKey, toggleDarkMode }}>

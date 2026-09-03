@@ -52,7 +52,9 @@ export const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({ navigation
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
+        enabled
       >
         <ScrollView
           contentContainerStyle={[
@@ -61,6 +63,8 @@ export const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({ navigation
           ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          automaticallyAdjustKeyboardInsets
+          contentInsetAdjustmentBehavior="automatic"
         >
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={[styles.logoBox, { backgroundColor: colors.palette.primaryLight }]}>

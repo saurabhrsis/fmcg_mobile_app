@@ -50,10 +50,10 @@ export const SupportScreen: React.FC = () => {
 
           <View style={{ gap: 8 }}>
             <Button
-              title="Email: support@StockVeda.com"
+              title="Email: rightserveinfotechsystems@gmail.com"
               icon="mail-outline"
               variant="secondary"
-              onPress={() => Linking.openURL('mailto:support@StockVeda.com')}
+              onPress={() => Linking.openURL('mailto:rightserveinfotechsystems@gmail.com')}
             />
             <Button
               title="Call: +91 86693 08888 / +91 94044 84560"

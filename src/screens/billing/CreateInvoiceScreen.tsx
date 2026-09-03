@@ -982,7 +982,7 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
         >
           <KeyboardAvoidingView
             style={styles.modalAvoidingView}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           >
             <View style={styles.modalOverlay}>
               <TouchableOpacity
@@ -1250,7 +1250,7 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
         >
           <KeyboardAvoidingView
             style={styles.modalAvoidingView}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           >
             <View style={styles.modalOverlay}>
               <TouchableOpacity

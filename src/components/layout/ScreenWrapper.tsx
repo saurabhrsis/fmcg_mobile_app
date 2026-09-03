@@ -81,7 +81,7 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
       {avoidKeyboard ? (
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={keyboardVerticalOffset ?? 0}
         >
           {content}

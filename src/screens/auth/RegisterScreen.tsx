@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -10,12 +10,14 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  findNodeHandle,
+  UIManager,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useBusiness } from '../../context/BusinessContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { authService } from '../../services/authService';
 import { StateSelect } from '../../components/common/StateSelect';
 import { Select } from '../../components/common/Select';
@@ -34,6 +36,34 @@ export const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
   const { login, checkSetupStatus } = useAuth();
   const { createBusiness, refreshBusinesses } = useBusiness();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const scrollRef = useRef<ScrollView>(null);
+
+  /**
+   * Scroll the exact focused field above the keyboard (real-device fix).
+   * KAV shrinks the view, then this pans the ScrollView so the tapped
+   * TextInput is not hidden behind the keyboard.
+   */
+  const focusScroll = (e: any) => {
+    const target = e?.target;
+    if (target == null) return;
+    setTimeout(() => {
+      try {
+        const scrollNode = findNodeHandle(scrollRef.current);
+        if (!scrollNode) return;
+        (UIManager as any).measureLayout(
+          target,
+          scrollNode,
+          () => {},
+          (_x: number, y: number) => {
+            scrollRef.current?.scrollTo({ y: Math.max(y - 120, 0), animated: true });
+          }
+        );
+      } catch {
+        /* ignore measure errors */
+      }
+    }, 120);
+  };
 
   // User account
   const [fullName, setFullName] = useState('');
@@ -138,9 +168,24 @@ export const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+    <SafeAreaView
+      edges={['top', 'bottom', 'left', 'right']}
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
+        enabled
+      >
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, 16) + 40 }]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          automaticallyAdjustKeyboardInsets
+          contentInsetAdjustmentBehavior="automatic"
+        >
           {/* Header */}
           <View style={styles.header}>
             <View style={[styles.iconCircle, { backgroundColor: colors.palette.primary }]}>
@@ -167,6 +212,7 @@ export const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                 placeholderTextColor={colors.textMuted}
                 value={fullName}
                 onChangeText={setFullName}
+                onFocus={focusScroll}
               />
             </View>
 
@@ -179,6 +225,7 @@ export const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                 value={username}
                 onChangeText={setUsername}
                 autoCapitalize="none"
+                onFocus={focusScroll}
               />
             </View>
 
@@ -194,6 +241,7 @@ export const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                     onChangeText={setPassword}
                     secureTextEntry={!showPassword}
                     autoCapitalize="none"
+                    onFocus={focusScroll}
                   />
                   <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ padding: 4 }}>
                     <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={18} color={colors.textMuted} />
@@ -210,7 +258,8 @@ export const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                   onChangeText={setConfirmPassword}
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
-                />
+                onFocus={focusScroll}
+              />
               </View>
             </View>
 
@@ -229,6 +278,7 @@ export const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                 placeholderTextColor={colors.textMuted}
                 value={secAnswer}
                 onChangeText={setSecAnswer}
+                onFocus={focusScroll}
               />
             </View>
           </View>
@@ -248,6 +298,7 @@ export const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                 placeholderTextColor={colors.textMuted}
                 value={bizName}
                 onChangeText={setBizName}
+                onFocus={focusScroll}
               />
             </View>
 
@@ -261,6 +312,7 @@ export const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                 onChangeText={handleGstinChange}
                 autoCapitalize="characters"
                 maxLength={15}
+                onFocus={focusScroll}
               />
             </View>
 
@@ -283,7 +335,8 @@ export const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                   value={phone}
                   onChangeText={setPhone}
                   keyboardType="phone-pad"
-                />
+                onFocus={focusScroll}
+              />
               </View>
               <View style={[styles.inputGroup, { flex: 1 }]}>
                 <Text style={[styles.label, { color: colors.textSecondary }]}>Email</Text>
@@ -295,7 +348,8 @@ export const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                   onChangeText={setEmail}
                   keyboardType="email-address"
                   autoCapitalize="none"
-                />
+                onFocus={focusScroll}
+              />
               </View>
             </View>
 
@@ -308,7 +362,8 @@ export const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                   placeholderTextColor={colors.textMuted}
                   value={address}
                   onChangeText={setAddress}
-                />
+                onFocus={focusScroll}
+              />
               </View>
               <View style={[styles.inputGroup, { flex: 1 }]}>
                 <Text style={[styles.label, { color: colors.textSecondary }]}>City</Text>
@@ -318,7 +373,8 @@ export const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
                   placeholderTextColor={colors.textMuted}
                   value={city}
                   onChangeText={setCity}
-                />
+                onFocus={focusScroll}
+              />
               </View>
             </View>
 
@@ -362,6 +418,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    flexGrow: 1,
     padding: 20,
   },
   header: {
