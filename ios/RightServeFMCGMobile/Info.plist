@@ -45,7 +45,7 @@
       <true/>
     </dict>
     <key>NSCameraUsageDescription</key>
-    <string>This app uses camera to scan barcodes and serial numbers on FMCG products.</string>
+    <string>This app uses the camera to scan product barcodes and serial numbers, and the RightServe desktop pairing QR code.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>This app uses photo library to select business logos and invoice receipts.</string>
     <key>RCTNewArchEnabled</key>

@@ -10,7 +10,7 @@ import {
 import { useTheme } from '../../context/ThemeContext';
 import { useBusiness } from '../../context/BusinessContext';
 import { invoiceService } from '../../services/invoiceService';
-import { Invoice, InvoiceType, NoteKind } from '../../types';
+import { BillType, Invoice, InvoiceType, NoteKind } from '../../types';
 import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
 import { SearchBar } from '../../components/common/SearchBar';
 import { Badge } from '../../components/common/Badge';
@@ -32,6 +32,8 @@ export const InvoiceListScreen: React.FC<{ navigation: any; route: any }> = ({
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  // Optional filter: only GST bills or only non-GST (bill of supply) records.
+  const [billFilter, setBillFilter] = useState<'' | BillType>('');
 
   const loadInvoices = async () => {
     if (!activeBusiness) return;
@@ -59,6 +61,7 @@ export const InvoiceListScreen: React.FC<{ navigation: any; route: any }> = ({
         type,
         noteKind,
         query: search,
+        billType: billFilter || undefined,
       });
       setInvoices(list);
     } catch (e) {
@@ -69,7 +72,7 @@ export const InvoiceListScreen: React.FC<{ navigation: any; route: any }> = ({
   useFocusEffect(
     useCallback(() => {
       loadInvoices();
-    }, [activeBusiness, activeTab, search])
+    }, [activeBusiness, activeTab, search, billFilter])
   );
 
   const onRefresh = async () => {
@@ -172,6 +175,40 @@ export const InvoiceListScreen: React.FC<{ navigation: any; route: any }> = ({
           </TouchableOpacity>
         </View>
 
+        {/* GST / Non-GST filter */}
+        <View style={styles.filterRow}>
+          {([
+            { key: '', label: 'All bills' },
+            { key: 'gst', label: 'GST bills' },
+            { key: 'non_gst', label: 'Non-GST bills' },
+          ] as const).map((f) => {
+            const active = billFilter === f.key;
+            return (
+              <TouchableOpacity
+                key={f.key || 'all'}
+                style={[
+                  styles.filterChip,
+                  {
+                    backgroundColor: active ? colors.palette.primaryLight : 'transparent',
+                    borderColor: active ? colors.palette.primary : colors.border,
+                  },
+                ]}
+                onPress={() => setBillFilter(f.key as '' | BillType)}
+              >
+                <Text
+                  style={{
+                    fontSize: 11.5,
+                    fontWeight: '700',
+                    color: active ? colors.palette.primaryDark : colors.textMuted,
+                  }}
+                >
+                  {f.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
         {/* Invoice List */}
         <FlatList
           data={invoices}
@@ -207,13 +244,20 @@ export const InvoiceListScreen: React.FC<{ navigation: any; route: any }> = ({
               onPress={() => navigation.navigate('InvoiceDetail', { id: item.id })}
             >
               <View style={styles.invTopRow}>
-                <View>
-                  <Text style={[styles.invNo, { color: colors.palette.primary }]}>
-                    {item.invoice_no}
-                  </Text>
-                  <Text style={[styles.invDate, { color: colors.textMuted }]}>
-                    {formatDate(item.date)}
-                  </Text>
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <View>
+                    <Text style={[styles.invNo, { color: colors.palette.primary }]}>
+                      {item.invoice_no}
+                    </Text>
+                    <Text style={[styles.invDate, { color: colors.textMuted }]}>
+                      {formatDate(item.date)}
+                    </Text>
+                  </View>
+                  {item.bill_type === 'non_gst' ? (
+                    <Badge label="NON-GST" variant="warning" />
+                  ) : item.gst_type === 'nil' ? (
+                    <Badge label="NIL" variant="neutral" />
+                  ) : null}
                 </View>
                 {getStatusBadge(item.status)}
               </View>
@@ -221,7 +265,7 @@ export const InvoiceListScreen: React.FC<{ navigation: any; route: any }> = ({
               <View style={styles.partyRow}>
                 <Ionicons name="person-circle-outline" size={18} color={colors.textMuted} style={{ marginRight: 6 }} />
                 <Text style={[styles.partyName, { color: colors.text }]} numberOfLines={1}>
-                  {item.party_name || 'Cash Customer'}
+                  {item.party_name || 'Walk-in Customer'}
                 </Text>
               </View>
 
@@ -276,6 +320,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     gap: 8,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+  },
+  filterChip: {
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
   },
   addBtn: {
     width: 42,

@@ -31,11 +31,21 @@ export const TRIAL_DAYS = 7;
 /** Warn during the trial when this many days (or fewer) remain. */
 export const TRIAL_REMINDER_DAYS = 3;
 
+/**
+ * Product a key unlocks. Activation binds ONE device, so a desktop key and a
+ * mobile key are separate products — buying both mints two keys for the same
+ * client. Legacy keys minted before the portal wrote `product` are treated as
+ * desktop keys.
+ */
+export type LicenseProduct = 'desktop' | 'mobile' | 'both';
+
 export interface LicensePayload {
   v?: number;
   id: string;
   client: string;
   plan?: string;
+  /** 'desktop' | 'mobile' | 'both' — missing on legacy keys (= desktop). */
+  product?: string;
   issued?: string;
   /** YYYY-MM-DD, or null for a perpetual licence. */
   expires: string | null;
@@ -60,6 +70,8 @@ export type LicenseState =
 
 export interface LicenseStatus {
   state: LicenseState;
+  /** Which product the installed key unlocks ('desktop' for untagged keys). */
+  product?: LicenseProduct;
   /** True when the app must block create/edit/delete operations. */
   readOnly: boolean;
   /** True while running on the free trial (paid key absent). */
@@ -162,6 +174,23 @@ export function isOnlineKey(payload: LicensePayload): boolean {
   return payload.online !== false && !!(payload.act && String(payload.act).trim());
 }
 
+/** Normalise the `product` field; untagged (legacy) keys count as desktop. */
+export function licenseProduct(payload?: LicensePayload | null): LicenseProduct {
+  const p = String((payload && payload.product) || '').trim().toLowerCase();
+  if (p === 'mobile' || p === 'app' || p === 'android' || p === 'ios') return 'mobile';
+  if (p === 'both' || p === 'desktop+mobile' || p === 'combo') return 'both';
+  return 'desktop';
+}
+
+/** True when the key may unlock THIS (mobile) app. */
+export function isMobileProduct(payload?: LicensePayload | null): boolean {
+  const p = licenseProduct(payload);
+  return p === 'mobile' || p === 'both';
+}
+
+export const DESKTOP_KEY_REASON =
+  'This key is for the RightServe desktop app. Ask RightServe for a Mobile license.';
+
 /** Evaluate a verified payload against this device + the current date. */
 export function evaluate(
   payload: LicensePayload,
@@ -179,6 +208,25 @@ export function evaluate(
       expires: payload.expires,
       reason: 'This license is locked to a different device.',
       payload,
+      product: licenseProduct(payload),
+      deviceId,
+      client: payload.client,
+      plan: payload.plan,
+    };
+  }
+
+  // Product gate: a desktop-only key must not unlock the mobile app (and the
+  // desktop app rejects `product: "mobile"` the same way).
+  if (!isMobileProduct(payload)) {
+    return {
+      state: 'invalid',
+      readOnly: true,
+      trial: false,
+      daysLeft: null,
+      expires: payload.expires,
+      reason: DESKTOP_KEY_REASON,
+      payload,
+      product: licenseProduct(payload),
       deviceId,
       client: payload.client,
       plan: payload.plan,
@@ -194,6 +242,7 @@ export function evaluate(
       daysLeft: null,
       expires: null,
       payload,
+      product: licenseProduct(payload),
       deviceId,
       client: payload.client,
       plan: payload.plan,
@@ -210,6 +259,7 @@ export function evaluate(
       expires: payload.expires,
       reason: `License expired on ${payload.expires}.`,
       payload,
+      product: licenseProduct(payload),
       deviceId,
       client: payload.client,
       plan: payload.plan,
@@ -224,6 +274,7 @@ export function evaluate(
     daysLeft,
     expires: payload.expires,
     payload,
+    product: licenseProduct(payload),
     deviceId,
     client: payload.client,
     plan: payload.plan,
@@ -319,6 +370,8 @@ export async function getStatus(): Promise<LicenseStatus> {
       daysLeft: null,
       expires: null,
       reason: v.reason,
+      payload: v.payload,
+      product: licenseProduct(v.payload),
       deviceId,
     };
   }
@@ -335,6 +388,7 @@ export async function getStatus(): Promise<LicenseStatus> {
         expires: v.payload.expires,
         reason: 'This key has not been activated on this device.',
         payload: v.payload,
+        product: licenseProduct(v.payload),
         client: v.payload.client,
         plan: v.payload.plan,
         deviceId,
@@ -363,6 +417,9 @@ export async function installLicenseKey(
 
   if (v.payload.machine && v.payload.machine.toUpperCase() !== deviceId.toUpperCase()) {
     return { ok: false, reason: 'This license is locked to a different device.' };
+  }
+  if (!isMobileProduct(v.payload)) {
+    return { ok: false, reason: DESKTOP_KEY_REASON };
   }
   if (v.payload.expires && dayDiff(v.payload.expires, now) < 0) {
     return { ok: false, reason: `This license expired on ${v.payload.expires}. Please request a renewal.` };

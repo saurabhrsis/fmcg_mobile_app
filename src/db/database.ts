@@ -28,6 +28,11 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
       // SQLite has no "ADD COLUMN IF NOT EXISTS", so ignore duplicate errors.
       const migrations = [
         "ALTER TABLE invoices ADD COLUMN gst_type TEXT DEFAULT 'auto'",
+        // GST vs non-GST (bill of supply) vouchers. 'nil' in gst_type marks
+        // nil-rated / exempt supplies.
+        "ALTER TABLE invoices ADD COLUMN bill_type TEXT NOT NULL DEFAULT 'gst'",
+        // Walk-in customers billed with a name only (details filled in later).
+        'ALTER TABLE parties ADD COLUMN is_walkin INTEGER NOT NULL DEFAULT 0',
       ];
       for (const sql of migrations) {
         try {

@@ -87,19 +87,27 @@ export const partyService = {
     return party;
   },
 
+  /**
+   * Create a party. Only the name is mandatory — a walk-in customer can be
+   * billed with a name alone (phone / GSTIN / address are filled in later from
+   * the party profile or the invoice screen).
+   */
   async createParty(data: Partial<Party>): Promise<Party> {
+    const name = String(data.name || '').trim();
+    if (!name) throw new Error('Party name is required');
     const res = await execute(
-      `INSERT INTO parties (name, type, phone, email, gstin, address, state, opening_balance)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO parties (name, type, phone, email, gstin, address, state, opening_balance, is_walkin)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        data.name?.trim() || 'New Party',
+        name,
         data.type || 'customer',
         data.phone?.trim() || '',
         data.email?.trim() || '',
-        data.gstin?.trim() || '',
+        data.gstin?.trim().toUpperCase() || '',
         data.address?.trim() || '',
         data.state?.trim() || '',
         Number(data.opening_balance) || 0,
+        this.incompleteProfile(data) ? 1 : 0,
       ]
     );
 
@@ -109,20 +117,50 @@ export const partyService = {
   async updateParty(id: number, data: Partial<Party>): Promise<void> {
     await execute(
       `UPDATE parties SET
-        name = ?, type = ?, phone = ?, email = ?, gstin = ?, address = ?, state = ?, opening_balance = ?
+        name = ?, type = ?, phone = ?, email = ?, gstin = ?, address = ?, state = ?, opening_balance = ?, is_walkin = ?
        WHERE id = ?`,
       [
         data.name?.trim() || '',
         data.type || 'customer',
         data.phone?.trim() || '',
         data.email?.trim() || '',
-        data.gstin?.trim() || '',
+        data.gstin?.trim().toUpperCase() || '',
         data.address?.trim() || '',
         data.state?.trim() || '',
         Number(data.opening_balance) || 0,
+        this.incompleteProfile(data) ? 1 : 0,
         id,
       ]
     );
+  },
+
+  /**
+   * A party is a "walk-in" while its profile is incomplete (no GSTIN and no
+   * phone). The flag clears itself automatically as soon as the user updates
+   * the details, so walk-in bills stay linked to the same ledger.
+   */
+  incompleteProfile(data: Partial<Party>): boolean {
+    const gstin = String(data.gstin || '').trim();
+    const phone = String(data.phone || '').trim();
+    return !gstin && !phone;
+  },
+
+  /** True when a stored party still has a name-only (walk-in) profile. */
+  isWalkIn(party?: Partial<Party> | null): boolean {
+    if (!party) return false;
+    if (Number(party.is_walkin) === 1) return true;
+    return this.incompleteProfile(party);
+  },
+
+  /** Missing fields on a party profile, for the "complete details later" hint. */
+  missingFields(party?: Partial<Party> | null): string[] {
+    if (!party) return [];
+    const missing: string[] = [];
+    if (!String(party.phone || '').trim()) missing.push('phone');
+    if (!String(party.gstin || '').trim()) missing.push('GSTIN');
+    if (!String(party.address || '').trim()) missing.push('address');
+    if (!String(party.state || '').trim()) missing.push('state');
+    return missing;
   },
 
   async deleteParty(id: number): Promise<void> {

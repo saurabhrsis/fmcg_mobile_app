@@ -1,0 +1,341 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>TAX INVOICE - INV-0043</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 12px;
+      color: #1e293b;
+      background: #ffffff;
+      padding: 24px;
+    }
+    .bill-container {
+      max-width: 800px;
+      margin: 0 auto;
+      border: 1px solid #cbd5e1;
+      padding: 20px;
+      border-radius: 6px;
+    }
+    .header-band {
+      background: #0f766e;
+      color: #ffffff;
+      padding: 12px 16px;
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .header-band h1 { font-size: 20px; font-weight: 700; letter-spacing: 0.5px; }
+    .header-band .inv-no { font-size: 14px; font-weight: 600; }
+    
+    .company-buyer-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px dashed #cbd5e1;
+    }
+    .info-card { font-size: 11.5px; line-height: 1.5; }
+    .info-card .name { font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+    .label { font-weight: 600; color: #475569; }
+
+    .meta-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      background: #f8fafc;
+      padding: 10px;
+      border-radius: 4px;
+      border: 1px solid #e2e8f0;
+      margin-bottom: 16px;
+      font-size: 11px;
+    }
+    .meta-item { display: flex; flex-direction: column; }
+    .meta-item .meta-label { color: #64748b; font-size: 10px; text-transform: uppercase; }
+    .meta-item .meta-val { font-weight: 600; color: #1e293b; }
+
+    table.item-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16px;
+      font-size: 11px;
+    }
+    table.item-table th {
+      background: #f1f5f9;
+      color: #334155;
+      padding: 8px 6px;
+      text-align: left;
+      font-weight: 600;
+      border-top: 1px solid #cbd5e1;
+      border-bottom: 1px solid #cbd5e1;
+    }
+    table.item-table td {
+      padding: 8px 6px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .summary-section {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .bank-terms-box {
+      font-size: 11px;
+      line-height: 1.4;
+      background: #f8fafc;
+      padding: 10px;
+      border-radius: 4px;
+      border: 1px solid #e2e8f0;
+    }
+    .totals-box {
+      background: #f8fafc;
+      padding: 12px;
+      border-radius: 4px;
+      border: 1px solid #e2e8f0;
+      font-size: 12px;
+    }
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+    }
+    .total-row.grand {
+      font-size: 15px;
+      font-weight: 700;
+      color: #0f766e;
+      border-top: 2px solid #0f766e;
+      margin-top: 6px;
+      padding-top: 6px;
+    }
+
+    .hsn-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10px;
+      margin-top: 8px;
+    }
+    .hsn-table th, .hsn-table td {
+      border: 1px solid #e2e8f0;
+      padding: 4px 6px;
+    }
+    .hsn-table th { background: #f8fafc; font-weight: 600; }
+
+    .footer-sign {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid #cbd5e1;
+    }
+    .sign-box { text-align: center; width: 200px; font-size: 11px; }
+    .sign-line { border-top: 1px solid #64748b; margin-top: 40px; padding-top: 4px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="bill-container">
+    <div class="header-band">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        
+        <div>
+          <h1>TAX INVOICE</h1>
+          <div style="font-size: 11px; opacity: 0.9;">Original For Recipient</div>
+        </div>
+      </div>
+      <div style="text-align: right;">
+        <div class="inv-no"># INV-0043</div>
+        <div style="font-size: 11px; opacity: 0.9;">Date: 03/09/2026</div>
+      </div>
+    </div>
+
+    <div class="company-buyer-grid">
+      <div class="info-card">
+        <div class="label" style="font-size: 10px; text-transform: uppercase;">Sold By / Supplier:</div>
+        <div class="name">Sharma FMCG Distributors</div>
+        <div>12 Market Road, Sitabuldi, Nagpur 440012</div>
+        <div><span class="label">Phone:</span> 9876543210 | <span class="label">Email:</span> sales@sharmafmcg.in</div>
+        <div><span class="label">GSTIN:</span> <strong>27ABCDE1234F1Z5</strong> (State: Maharashtra)</div>
+        
+      </div>
+
+      <div class="info-card">
+        <div class="label" style="font-size: 10px; text-transform: uppercase;">Billed To (Buyer):</div>
+        <div class="name">Gupta Supermarket</div>
+        <div>45 Bazar Street, Nagpur</div>
+        <div><span class="label">Phone:</span> 9812345678</div>
+        <div><span class="label">GSTIN:</span> <strong>27AAAAA0000A1Z5</strong> (State: Maharashtra)</div>
+        
+      </div>
+    </div>
+
+    
+
+    
+
+    <table class="item-table">
+      <thead>
+        <tr>
+          <th style="width: 30px; text-align: center;">#</th>
+          <th>Item Description</th>
+          <th style="text-align: center;">HSN</th>
+          <th style="text-align: right;">Qty</th>
+          <th style="text-align: right;">Rate</th>
+          <th style="text-align: right;">Disc</th>
+          <th style="text-align: right;">Taxable</th>
+          <th style="text-align: center;">GST</th>
+          <th style="text-align: right;">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+      <tr>
+        <td style="text-align: center;">1</td>
+        <td>
+          <div style="font-weight: 600;">Parle-G Glucose Biscuits 800g</div>
+          <div style="font-size: 10px; color: #666;">Batch: LOT-A </div>
+          
+        </td>
+        <td style="text-align: center;">1905</td>
+        <td style="text-align: right;">10 Box</td>
+        <td style="text-align: right;">₹100.00</td>
+        <td style="text-align: right;">-</td>
+        <td style="text-align: right;">₹1,000.00</td>
+        <td style="text-align: center;">18%</td>
+        <td style="text-align: right; font-weight: 600;">₹1,180.00</td>
+      </tr>
+    
+      <tr>
+        <td style="text-align: center;">2</td>
+        <td>
+          <div style="font-weight: 600;">Sunfeast Dark Fantasy 75g</div>
+          <div style="font-size: 10px; color: #666;">Batch: LOT-B </div>
+          
+        </td>
+        <td style="text-align: center;">1905</td>
+        <td style="text-align: right;">24 Pack</td>
+        <td style="text-align: right;">₹35.00</td>
+        <td style="text-align: right;">-</td>
+        <td style="text-align: right;">₹840.00</td>
+        <td style="text-align: center;">18%</td>
+        <td style="text-align: right; font-weight: 600;">₹991.20</td>
+      </tr>
+    
+      </tbody>
+    </table>
+
+    
+
+    <div class="summary-section">
+      <div>
+        <div class="bank-terms-box">
+          <div style="display: flex; gap: 10px; align-items: flex-start;">
+            <div style="flex: 1;">
+              <div style="font-weight: 700; margin-bottom: 4px; color: #0f172a;">Bank & Payment Info:</div>
+              <div>Bank: <strong>HDFC Bank</strong> | A/C: <strong>50200012345678</strong></div>
+              <div>IFSC: <strong>HDFC0001234</strong> | Branch: </div>
+              
+              <div>UPI ID: <strong>sharmafmcg@upi</strong></div>
+            </div>
+            
+          </div>
+
+          <div style="font-weight: 700; margin-top: 8px; margin-bottom: 2px;">Terms & Conditions:</div>
+          <div>1. Goods once sold will not be taken back. 2. Interest @18% p.a. on overdue bills.</div>
+          
+        </div>
+
+        <div style="margin-top: 10px;">
+          <div style="font-size: 10px; font-weight: 600; text-transform: uppercase; color: #64748b;">HSN/SAC Tax Summary:</div>
+          <table class="hsn-table">
+            <thead>
+              <tr>
+                <th>HSN</th>
+                <th style="text-align: right;">Taxable</th>
+                
+                  <th style="text-align: right;">CGST</th>
+                  <th style="text-align: right;">SGST</th>
+                
+                <th style="text-align: right;">Total Tax</th>
+              </tr>
+            </thead>
+            <tbody>
+              
+      <tr>
+        <td>1905</td>
+        <td style="text-align: right;">₹1,840.00</td>
+        
+          <td style="text-align: right;">₹165.60</td>
+          <td style="text-align: right;">₹165.60</td>
+        
+        <td style="text-align: right; font-weight: 600;">₹331.20</td>
+      </tr>
+    
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="totals-box">
+        <div class="total-row">
+          <span>Taxable Subtotal:</span>
+          <strong>₹1,840.00</strong>
+        </div>
+        
+        <div class="total-row" style="color: #dc2626;">
+          <span>Extra Discount:</span>
+          <strong>-₹40.00</strong>
+        </div>
+        
+        
+        <div class="total-row">
+          <span>CGST:</span>
+          <span>₹162.00</span>
+        </div>
+        <div class="total-row">
+          <span>SGST:</span>
+          <span>₹162.00</span>
+        </div>
+        
+        
+        <div class="total-row grand">
+          <span>Grand Total:</span>
+          <span>₹2,124.00</span>
+        </div>
+        <div style="font-size: 10px; color: #64748b; margin-top: 4px; font-style: italic;">
+          Two Thousand One Hundred Twenty Four Rupees Only
+        </div>
+
+        <div style="border-top: 1px dashed #cbd5e1; margin-top: 8px; padding-top: 8px;">
+          <div class="total-row">
+            <span>Amount Paid:</span>
+            <span>₹0.00</span>
+          </div>
+          <div class="total-row" style="font-weight: 700; color: #e11d48;">
+            <span>Balance Due:</span>
+            <span>₹2,124.00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-sign">
+      <div style="font-size: 10px; color: #64748b; display: flex; align-items: flex-end; gap: 12px;">
+        
+        <span>Thank you for your business!</span>
+      </div>
+      <div class="sign-box">
+        <div>For <strong>Sharma FMCG Distributors</strong></div>
+        <div class="sign-line">Authorised Signatory</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+    

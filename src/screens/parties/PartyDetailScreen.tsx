@@ -17,6 +17,7 @@ import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { formatCurrency, formatDate } from '../../utils/formatters';
+import { Ionicons } from '@expo/vector-icons';
 
 export const PartyDetailScreen: React.FC<{ navigation: any; route: any }> = ({
   navigation,
@@ -86,7 +87,12 @@ export const PartyDetailScreen: React.FC<{ navigation: any; route: any }> = ({
         <Card>
           <View style={styles.headerRow}>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.title, { color: colors.text }]}>{party?.name}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={[styles.title, { color: colors.text, flex: 1 }]} numberOfLines={1}>
+                  {party?.name}
+                </Text>
+                {partyService.isWalkIn(party) ? <Badge label="WALK-IN" variant="info" /> : null}
+              </View>
               <Text style={[styles.typeText, { color: colors.palette.primary }]}>
                 {party?.type.toUpperCase()} ACCOUNT
               </Text>
@@ -132,6 +138,24 @@ export const PartyDetailScreen: React.FC<{ navigation: any; route: any }> = ({
               />
             ) : null}
           </View>
+
+          {party && partyService.missingFields(party).length > 0 ? (
+            <View
+              style={[
+                styles.incompleteBox,
+                { backgroundColor: colors.surfaceSubtle, borderColor: colors.border },
+              ]}
+            >
+              <Ionicons name="information-circle-outline" size={16} color={colors.palette.warning} />
+              <Text style={[styles.incompleteText, { color: colors.textSecondary }]}>
+                {partyService.isWalkIn(party)
+                  ? 'Walk-in customer — saved with a name only.'
+                  : 'Profile incomplete.'}{' '}
+                Add {partyService.missingFields(party).join(', ')} whenever you have them; every bill
+                already raised stays linked to this ledger.
+              </Text>
+            </View>
+          ) : null}
 
           <View style={styles.infoGrid}>
             <View style={styles.infoCol}>
@@ -243,7 +267,7 @@ export const PartyDetailScreen: React.FC<{ navigation: any; route: any }> = ({
         {/* Footer Actions */}
         <View style={styles.footerRow}>
           <Button
-            title="Edit Party Details"
+            title={party && partyService.isWalkIn(party) ? 'Update Details' : 'Edit Party Details'}
             icon="create-outline"
             onPress={() => navigation.navigate('PartyForm', { id: party?.id })}
             style={{ flex: 1 }}
@@ -265,6 +289,20 @@ const styles = StyleSheet.create({
   container: {
     padding: 16,
     paddingBottom: 60,
+  },
+  incompleteBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 12,
+  },
+  incompleteText: {
+    flex: 1,
+    fontSize: 11.5,
+    lineHeight: 16,
   },
   headerRow: {
     flexDirection: 'row',

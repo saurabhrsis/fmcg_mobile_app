@@ -55,6 +55,7 @@ import { BackupRestoreScreen } from '../screens/settings/BackupRestoreScreen';
 import { DataImportScreen } from '../screens/settings/DataImportScreen';
 import { WhatsAppSettingsScreen } from '../screens/settings/WhatsAppSettingsScreen';
 import { DesktopSyncScreen } from '../screens/settings/DesktopSyncScreen';
+import { ScanDesktopQrScreen } from '../screens/settings/ScanDesktopQrScreen';
 import { SupportScreen } from '../screens/settings/SupportScreen';
 
 // Licensing
@@ -119,6 +120,7 @@ export const AppNavigator: React.FC = () => {
       <Stack.Screen name="ThemeSettings" component={ThemeSettingsScreen} />
       <Stack.Screen name="BackupRestore" component={BackupRestoreScreen} />
       <Stack.Screen name="DesktopSync" component={DesktopSyncScreen} />
+      <Stack.Screen name="ScanDesktopQr" component={ScanDesktopQrScreen} />
       <Stack.Screen name="DataImport" component={DataImportScreen} />
       <Stack.Screen name="WhatsAppSettings" component={WhatsAppSettingsScreen} />
       <Stack.Screen name="Support" component={SupportScreen} />

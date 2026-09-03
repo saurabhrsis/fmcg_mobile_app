@@ -14,6 +14,9 @@ A full-featured mobile counterpart to the FMCG Desktop ERP system, designed for 
   the same [RightServe licensing portal](https://github.com/nitesh1414/fmcg_software), verified
   **offline** on device. Supports perpetual keys, device-locked keys, expiry reminders and
   one-time online activation.
+- **Desktop and mobile are separate products** — a key carries `product` (`desktop`, `mobile`,
+  `both`) and activates **one device**. This app rejects desktop-only keys (untagged legacy keys
+  count as desktop); buying both apps mints two keys for the same client, renewed separately.
 - **Read-only mode** after the trial or a licence expires: view, search, print and back up
   still work; creating/editing invoices, items, parties, payments and e-way bills is blocked.
 
@@ -38,6 +41,15 @@ See [docs/LICENSING.md](docs/LICENSING.md) for the full scheme.
 
 ### 4. Billing & Vouchers
 - **Voucher Types**: Sales Invoices, Purchase Invoices, Quotations/Estimates, Credit Notes, Debit Notes.
+- **GST or Non-GST Bills**: every voucher is either a **GST Bill (Tax Invoice)** or a
+  **Non-GST Bill (Bill of Supply)** for unregistered, composition or exempt-goods buyers. Non-GST
+  bills carry no tax at all and print as *BILL OF SUPPLY* without GST columns, with a “no GST
+  charged” declaration.
+- **Supply / Tax Type**: `Auto`, `Intra-state (CGST+SGST)`, `Inter-state (IGST)` or
+  `Nil / Exempt`. On a non-GST bill the same choice (`Intra` / `Inter` / `Nil`) only classifies the
+  supply for your registers.
+- **Walk-in Counter Billing**: bill a walking customer by adding **just a name** — phone, GSTIN and
+  address can be updated later from the bill or the party list without losing the ledger link.
 - **3-Tier Discounts**: Trade Discount, Cash Discount (CD), and Special Discount (SD) in % or flat ₹ amounts.
 - **GST Calculation Engine**: Automated Intra-state (CGST + SGST) vs. Inter-state (IGST) split based on party GSTIN state code, Cess rates, Reverse charge, and Round-off.
 - **FMCG Dispatch Details**: E-Way Bill No., Consignee details, Place of supply, PO/Order Ref, Transporter & vehicle details.
@@ -47,6 +59,8 @@ See [docs/LICENSING.md](docs/LICENSING.md) for the full scheme.
 
 ### 5. Parties & Ledger
 - Customers and Suppliers directory with GSTIN state code validation.
+- **Walk-in customers** saved with a name only (`is_walkin`), flagged in the directory and
+  self-clearing once a phone number or GSTIN is added.
 - Real-time opening balance, outstanding receivables/payables, and invoice/payment transaction ledgers.
 - 1-tap WhatsApp payment reminder dispatch.
 
@@ -60,7 +74,9 @@ See [docs/LICENSING.md](docs/LICENSING.md) for the full scheme.
 
 ### 8. Enterprise Reports
 - **Sales & Purchase Registers** with date range filters, GST breakdowns, and CSV export.
-- **GST & HSN Table 12 Summary** with B2B, B2CL, B2CS classifications and GSTR-1 JSON export.
+- **GST & HSN Table 12 Summary** with B2B, B2CL, B2CS classifications and GSTR-1 JSON export —
+  non-GST bills and nil-rated supplies are counted separately as “Outside GSTR-1” and never enter
+  the portal JSON, while the sales register still lists them.
 - **Outstanding Receivables & Payables** with aging analysis.
 - **Financial Year Balance Sheet** (Turnover, Purchases, Gross Margin, Stock Valuation).
 - **Serial & Batch Traceability Audit Trail**.
@@ -71,7 +87,12 @@ See [docs/LICENSING.md](docs/LICENSING.md) for the full scheme.
 - 8 Theme Palettes (Teal, Indigo, Emerald, Amber, Rose, Violet, Cyan, Slate) and Dark/Light Mode.
 - Complete Backup & Restore (JSON database snapshots).
 - CSV Data Migration for items and parties with sample template downloads.
-- Desktop Sync and shortcut reference.
+- **Desktop Sync with QR pairing**: scan the QR shown by the desktop app (Settings → Mobile Sync,
+  port `4000`) to save the LAN address *and* the required API key in one step, then tap **Full
+  Sync**. Manual URL/key entry, an offline sync-file export/import, and `usesCleartextTraffic` for
+  release Android builds are included. Records merge by natural keys (business name, item name +
+  SKU, party name + type, invoice no + type, batch no) — the licence key never links two databases.
+- Shortcut reference (`F2` Billing, `F6` Inventory, `F9` Parties, `F12` Features).
 
 ---
 

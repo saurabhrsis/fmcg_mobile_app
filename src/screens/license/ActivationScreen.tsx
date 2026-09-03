@@ -64,8 +64,8 @@ export const ActivationScreen: React.FC<{ navigation: any }> = ({ navigation }) 
           <Text style={[styles.title, { color: colors.text }]}>Activate Your License</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             {trialEnded
-              ? `Your ${TRIAL_DAYS}-day free trial has ended. Enter a license key to continue creating invoices.`
-              : 'Paste the license key issued to your business to unlock full access.'}
+              ? `Your ${TRIAL_DAYS}-day free trial has ended. Enter your Mobile license key to continue creating invoices.`
+              : 'Paste the Mobile license key issued to your business to unlock full access on this phone.'}
           </Text>
         </View>
 
@@ -132,6 +132,21 @@ export const ActivationScreen: React.FC<{ navigation: any }> = ({ navigation }) 
             used for the desktop software.{'\n'}
             3. Paste the key above. Internet is needed only once, at activation; afterwards the app
             works fully offline.
+          </Text>
+        </View>
+
+        {/* Desktop and mobile are separate products — one key unlocks one device */}
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.cardTitle, { color: colors.palette.primary }]}>
+            Mobile key ≠ Desktop key
+          </Text>
+          <Text style={[styles.hint, { color: colors.textSecondary }]}>
+            A licence activates ONE device, so the phone and the PC need their own keys. Ask
+            RightServe for the <Text style={{ fontWeight: '700' }}>Mobile app</Text> product (or
+            “Desktop + Mobile”, which issues two keys for the same client).{'\n'}
+            A desktop key pasted here is rejected with the message “This key is for the RightServe
+            desktop app”, and the desktop app rejects a mobile key the same way. Renew each product
+            separately.
           </Text>
         </View>
 

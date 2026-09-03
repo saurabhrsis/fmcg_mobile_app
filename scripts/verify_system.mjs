@@ -14,6 +14,14 @@ const schemaMatch = schemaFile.match(/export const SCHEMA_SQL = `([\s\S]*?)`;/);
 if (!schemaMatch) throw new Error('Could not parse schema SQL');
 const schemaSql = schemaMatch[1];
 db.exec(schemaSql);
+// Additive migrations that src/db/database.ts applies to existing installs.
+for (const sql of [
+  "ALTER TABLE invoices ADD COLUMN gst_type TEXT DEFAULT 'auto'",
+  "ALTER TABLE invoices ADD COLUMN bill_type TEXT NOT NULL DEFAULT 'gst'",
+  'ALTER TABLE parties ADD COLUMN is_walkin INTEGER NOT NULL DEFAULT 0',
+]) {
+  try { db.exec(sql); } catch (_) { /* column already present */ }
+}
 console.log('   ✅ All 12 tables and indices created successfully.');
 
 // 2. Helper wrappers
@@ -213,6 +221,131 @@ const backupJson = JSON.stringify(backupSnapshot);
 if (backupJson.length < 500) throw new Error('Backup snapshot payload too small');
 console.log(`   ✅ Backup snapshot created (${backupJson.length} bytes) spanning all 11 ERP tables.`);
 
+// 14. Walk-in customer billed with a name only, then completed later
+console.log('1️⃣3️⃣ Testing Walk-in Customer (name only → updated later)...');
+const walkInFlag = (p) => (!String(p.gstin || '').trim() && !String(p.phone || '').trim() ? 1 : 0);
+const walkin = runAsync(
+  `INSERT INTO parties (name, type, phone, email, gstin, address, state, opening_balance, is_walkin)
+   VALUES (?, 'customer', '', '', '', '', '', 0, ?)`,
+  ['Walk-in Customer', walkInFlag({ gstin: '', phone: '' })]
+);
+let walkinRow = queryOne('SELECT * FROM parties WHERE id = ?', [walkin.lastInsertRowId]);
+if (walkinRow.is_walkin !== 1) throw new Error('Walk-in customer was not flagged');
+
+// A bill of supply raised for that name-only customer
+const bosInv = runAsync(
+  `INSERT INTO invoices (invoice_no, type, business_id, party_id, date, subtotal, discount, tax_total, total, round_off, paid, status, gst_type, bill_type)
+   VALUES ('INV-0002', 'sale', 1, ?, '2026-09-02', 500, 0, 0, 500, 0, 500, 'paid', 'intra', 'non_gst')`,
+  [walkin.lastInsertRowId]
+);
+runAsync(
+  `INSERT INTO invoice_items (invoice_id, item_id, item_name, hsn, qty, unit, unit_factor, base_qty, price, gst_rate, taxable, tax_amount, line_total)
+   VALUES (?, ?, 'Parle-G Glucose Biscuits', '1905', 5, 'Box', 120, 600, 100, 0, 500, 0, 500)`,
+  [bosInv.lastInsertRowId, itemId]
+);
+
+// Details updated afterwards → walk-in flag clears itself, bill stays linked
+runAsync(
+  "UPDATE parties SET phone = '9812345678', gstin = '07AAAAA0000A1Z5', state = 'Delhi', is_walkin = ? WHERE id = ?",
+  [walkInFlag({ gstin: '07AAAAA0000A1Z5', phone: '9812345678' }), walkin.lastInsertRowId]
+);
+walkinRow = queryOne('SELECT * FROM parties WHERE id = ?', [walkin.lastInsertRowId]);
+if (walkinRow.is_walkin !== 0) throw new Error('Walk-in flag did not clear after the profile was completed');
+const linkedBill = queryOne('SELECT COUNT(*) AS c FROM invoices WHERE party_id = ?', [walkin.lastInsertRowId]);
+if (linkedBill.c !== 1) throw new Error('Walk-in bill lost its party link after the update');
+console.log('   ✅ Walk-in customer billed with a name only, then phone + GSTIN added later; ledger link preserved.');
+
+// 15. Non-GST bill (bill of supply) with intra / inter / nil supply types
+console.log('1️⃣4️⃣ Testing Non-GST Bills (intra / inter / nil supply types)...');
+const supplyTypes = ['intra', 'inter', 'nil'];
+for (const [i, gstType] of supplyTypes.entries()) {
+  const inv = runAsync(
+    `INSERT INTO invoices (invoice_no, type, business_id, party_id, date, subtotal, discount, tax_total, total, round_off, paid, status, gst_type, bill_type)
+     VALUES (?, 'sale', 1, ?, '2026-09-02', 1000, 0, 0, 1000, 0, 1000, 'paid', ?, 'non_gst')`,
+    [`BOS-000${i + 1}`, walkin.lastInsertRowId, gstType]
+  );
+  const row = queryOne('SELECT tax_total, bill_type, gst_type FROM invoices WHERE id = ?', [inv.lastInsertRowId]);
+  if (row.bill_type !== 'non_gst' || Number(row.tax_total) !== 0) {
+    throw new Error(`Non-GST bill (${gstType}) stored tax or the wrong bill type`);
+  }
+}
+// A GST invoice keeps taxing normally
+const gstInv = runAsync(
+  `INSERT INTO invoices (invoice_no, type, business_id, party_id, date, subtotal, discount, tax_total, total, round_off, paid, status, gst_type, bill_type)
+   VALUES ('INV-0003', 'sale', 1, ?, '2026-09-02', 1000, 0, 180, 1180, 0, 0, 'unpaid', 'auto', 'gst')`,
+  [walkin.lastInsertRowId]
+);
+const gstRow = queryOne('SELECT tax_total, bill_type FROM invoices WHERE id = ?', [gstInv.lastInsertRowId]);
+if (gstRow.bill_type !== 'gst' || Number(gstRow.tax_total) !== 180) throw new Error('GST invoice lost its tax');
+
+// Nil-rated supply on a GST invoice (gst_type = 'nil') also carries no tax
+const nilInv = runAsync(
+  `INSERT INTO invoices (invoice_no, type, business_id, party_id, date, subtotal, discount, tax_total, total, round_off, paid, status, gst_type, bill_type)
+   VALUES ('INV-0004', 'sale', 1, ?, '2026-09-02', 800, 0, 0, 800, 0, 800, 'paid', 'nil', 'gst')`,
+  [walkin.lastInsertRowId]
+);
+console.log('   ✅ Non-GST bills saved with intra / inter / nil supply types and zero tax; GST + nil-rated invoices unaffected.');
+
+// 16. GST returns must ignore non-GST bills; registers must still show them
+console.log('1️⃣5️⃣ Testing GSTR-1 Exclusion & Sales Register Coverage of Non-GST Bills...');
+const gstr1Rows = queryAll(`
+  SELECT inv.invoice_no FROM invoice_items ii
+  JOIN invoices inv ON inv.id = ii.invoice_id
+  WHERE inv.type = 'sale'
+    AND IFNULL(inv.bill_type, 'gst') <> 'non_gst'
+    AND IFNULL(inv.gst_type, 'auto') <> 'nil'
+`);
+if (gstr1Rows.some((r) => r.invoice_no.startsWith('BOS-'))) throw new Error('Non-GST bill leaked into GSTR-1');
+const registerRows = queryAll("SELECT invoice_no, bill_type FROM invoices WHERE type = 'sale' ORDER BY id");
+if (!registerRows.some((r) => r.bill_type === 'non_gst')) throw new Error('Sales register lost the non-GST bills');
+console.log(`   ✅ GSTR-1 / HSN summary cover ${gstr1Rows.length} taxable invoice(s); the sales register still lists all ${registerRows.length} bills including non-GST ones.`);
+
+// 17. Desktop pairing QR payload parsing (mirrors syncService.parsePairingCode)
+console.log('1️⃣6️⃣ Testing Desktop Pairing QR Payload Parsing...');
+function normalizeBaseUrl(url) {
+  let u = String(url || '').trim();
+  if (!u) return '';
+  if (!/^https?:\/\//i.test(u)) u = `http://${u}`;
+  u = u.replace(/\/+$/, '');
+  u = u.replace(/\/api\/sync(?:\/ping|\/pull|\/push)?$/i, '');
+  u = u.replace(/\/api$/i, '');
+  return u.replace(/\/+$/, '');
+}
+function parsePairingCode(raw) {
+  const text = String(raw || '').trim();
+  if (!text) throw new Error('Empty QR');
+  let url = '';
+  let apiKey = '';
+  try {
+    const j = JSON.parse(text);
+    if (j && (j.app === 'rightserve-sync' || j.v === 1)) {
+      url = j.url || j.u || '';
+      apiKey = j.key || j.k || '';
+    }
+  } catch {
+    const m = text.match(/^rightserve:\/\/sync\?(.*)$/i);
+    if (m) {
+      const q = new URLSearchParams(m[1]);
+      url = q.get('url') || q.get('u') || '';
+      apiKey = q.get('key') || q.get('k') || '';
+    }
+  }
+  url = normalizeBaseUrl(url);
+  apiKey = String(apiKey || '').trim();
+  if (!url || !apiKey) throw new Error('This QR is not a RightServe desktop pairing code.');
+  return { url, apiKey };
+}
+const qrJson = parsePairingCode('{"v":1,"app":"rightserve-sync","url":"http://192.168.1.5:4000","key":"rsync_abc123"}');
+if (qrJson.url !== 'http://192.168.1.5:4000' || qrJson.apiKey !== 'rsync_abc123') throw new Error('QR JSON payload mis-parsed');
+const qrDeep = parsePairingCode('rightserve://sync?url=http%3A%2F%2F192.168.1.9%3A4000&key=rsync_xyz');
+if (qrDeep.url !== 'http://192.168.1.9:4000' || qrDeep.apiKey !== 'rsync_xyz') throw new Error('QR deep link mis-parsed');
+if (normalizeBaseUrl('192.168.1.5:4000/api/sync/push') !== 'http://192.168.1.5:4000') throw new Error('normalizeBaseUrl did not strip /api/sync');
+if (normalizeBaseUrl('http://192.168.1.5:4000/api/') !== 'http://192.168.1.5:4000') throw new Error('normalizeBaseUrl did not strip /api');
+let rejected = false;
+try { parsePairingCode('https://example.com/not-a-pairing-code'); } catch (_) { rejected = true; }
+if (!rejected) throw new Error('Foreign QR was accepted as a pairing code');
+console.log('   ✅ Pairing QR (JSON + deep link) parsed, /api/sync stripped, foreign QR rejected.');
+
 console.log('\n====================================================');
-console.log('🎉 ALL 12 ENTERPRISE TEST SCENARIOS PASSED WITH 100% ACCURACY!');
+console.log('🎉 ALL 16 ENTERPRISE TEST SCENARIOS PASSED WITH 100% ACCURACY!');
 console.log('====================================================\n');

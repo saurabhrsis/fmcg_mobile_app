@@ -117,7 +117,37 @@ export function posStateCode(inv?: any): string {
   return stateCode(p.state, p.gstin);
 }
 
+/** True when the voucher is a non-GST bill (bill of supply / cash memo). */
+export function isNonGstBill(inv?: { bill_type?: string } | null): boolean {
+  return String((inv && inv.bill_type) || '').trim().toLowerCase() === 'non_gst';
+}
+
+/** True when no tax at all applies (non-GST bill, or nil-rated / exempt supply). */
+export function isNilRated(inv?: { bill_type?: string; gst_type?: string } | null): boolean {
+  if (isNonGstBill(inv)) return true;
+  const t = String((inv && inv.gst_type) || '').trim().toLowerCase();
+  return t === 'nil' || t === 'exempt' || t === 'none';
+}
+
+/** Human label for the supply type recorded on a voucher. */
+export function supplyTypeLabel(inv?: { bill_type?: string; gst_type?: string } | null): string {
+  const t = String((inv && inv.gst_type) || '').trim().toLowerCase();
+  if (isNonGstBill(inv)) {
+    if (t === 'inter' || t === 'igst') return 'Non-GST · Inter-state supply';
+    if (t === 'nil') return 'Non-GST · Nil / Exempt supply';
+    return 'Non-GST · Intra-state supply';
+  }
+  if (t === 'nil') return 'Nil-rated / Exempt supply';
+  if (t === 'inter' || t === 'igst') return 'Inter-state supply (IGST)';
+  if (t === 'intra' || t === 'cgst_sgst') return 'Intra-state supply (CGST + SGST)';
+  return 'Auto (from GSTIN states)';
+}
+
 export function isInterState(biz?: any, inv?: any): boolean {
+  // A non-GST bill (bill of supply) or a nil-rated / exempt supply never
+  // charges IGST — there is no tax on it at all.
+  if (isNilRated(inv)) return false;
+
   // Per-invoice override: SEZ / deemed-export supplies (e.g. MIHAN Nagpur SEZ
   // units) charge IGST even when both parties are in the same state. The
   // voucher can force 'inter' (IGST) or 'intra' (CGST+SGST); 'auto' / empty

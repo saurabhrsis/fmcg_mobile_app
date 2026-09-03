@@ -175,6 +175,7 @@ CREATE TABLE IF NOT EXISTS parties (
   address TEXT DEFAULT '',
   state TEXT DEFAULT '',
   opening_balance REAL NOT NULL DEFAULT 0,
+  is_walkin INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -220,6 +221,7 @@ CREATE TABLE IF NOT EXISTS invoices (
   no_of_packets TEXT DEFAULT '',
   supplier_inv_no TEXT DEFAULT '',
   gst_type TEXT DEFAULT 'auto',
+  bill_type TEXT NOT NULL DEFAULT 'gst',
   created_by INTEGER REFERENCES users(id),
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

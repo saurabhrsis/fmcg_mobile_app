@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useLicense } from '../../context/LicenseContext';
 import { useBusiness } from '../../context/BusinessContext';
@@ -22,7 +23,18 @@ import { batchService } from '../../services/batchService';
 import { invoiceService } from '../../services/invoiceService';
 import { serialService } from '../../services/serialService';
 import { businessService } from '../../services/businessService';
-import { Item, Party, InvoiceItem, InvoiceType, NoteKind, Batch, ItemUnit, CompanyFeatures } from '../../types';
+import {
+  Item,
+  Party,
+  InvoiceItem,
+  InvoiceType,
+  NoteKind,
+  Batch,
+  ItemUnit,
+  CompanyFeatures,
+  BillType,
+  GstType,
+} from '../../types';
 import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
@@ -72,8 +84,10 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
   const [consigneeState, setConsigneeState] = useState('');
   const [placeOfSupply, setPlaceOfSupply] = useState('');
 
-  // GST tax type
-  const [gstType, setGstType] = useState<'auto' | 'intra' | 'inter'>('auto');
+  // GST tax type / supply type
+  const [gstType, setGstType] = useState<GstType>('auto');
+  // GST bill (tax invoice) vs NON-GST bill (bill of supply / cash memo)
+  const [billType, setBillType] = useState<BillType>('gst');
 
   // Order & References
   const [poNo, setPoNo] = useState('');
@@ -105,6 +119,7 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
   // Party search & inline quick-add
   const [partySearch, setPartySearch] = useState('');
   const [addingParty, setAddingParty] = useState(false);
+  const [walkInMode, setWalkInMode] = useState(false);
   const [newPartyName, setNewPartyName] = useState('');
   const [newPartyPhone, setNewPartyPhone] = useState('');
   const [newPartyGstin, setNewPartyGstin] = useState('');
@@ -147,13 +162,20 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
     })();
   }, [activeBusiness, type, noteKind]);
 
+  // A non-GST bill (bill of supply) and a nil-rated / exempt supply carry no
+  // tax at all — line rates are ignored for the totals and on save.
+  const noTax = billType === 'non_gst' || gstType === 'nil';
+
+  const partyTypeNeeded = type === 'purchase' || noteKind === 'debit' ? 'supplier' : 'customer';
+  const partyTypeLabel = partyTypeNeeded === 'supplier' ? 'Supplier' : 'Customer';
+
   // Recalculate Totals
   let subtotal = 0;
   let taxTotal = 0;
   let totalGross = 0;
 
   lineItems.forEach((l) => {
-    const c = computeLineMath(l);
+    const c = computeLineMath(noTax ? { ...l, gst_rate: 0 } : l);
     subtotal += c.taxable;
     taxTotal += c.tax_amount;
     totalGross += c.line_total;
@@ -169,7 +191,43 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
     consignee_state: shipToSame ? '' : consigneeState,
     consignee_gstin: shipToSame ? '' : consigneeGstin,
   });
-  const effectiveInter = gstType === 'inter' ? true : gstType === 'intra' ? false : autoInter;
+  const effectiveInter = noTax ? false : gstType === 'inter' ? true : gstType === 'intra' ? false : autoInter;
+
+  /**
+   * Switching to a non-GST bill (or a nil-rated supply) drops every line rate
+   * to 0%; switching back to a taxable bill restores the rates from the item
+   * master so the user never has to re-enter them.
+   */
+  useEffect(() => {
+    setLineItems((prev) => {
+      if (prev.length === 0) return prev;
+      return prev.map((l) => {
+        if (noTax) {
+          if (!Number(l.gst_rate)) return l;
+          return { ...l, gst_rate: 0, orig_gst_rate: l.orig_gst_rate ?? l.gst_rate };
+        }
+        const restore = Number(l.orig_gst_rate ?? 0);
+        if (!restore || Number(l.gst_rate) === restore) return l;
+        return { ...l, gst_rate: restore };
+      });
+    });
+  }, [noTax]);
+
+  /**
+   * Walk-in customer details can be completed after the bill is saved, so the
+   * party list (and the selected party) is refreshed whenever this screen
+   * regains focus — e.g. after returning from the party profile.
+   */
+  useFocusEffect(
+    React.useCallback(() => {
+      (async () => {
+        if (!activeBusiness) return;
+        const pList = await partyService.getAllParties(partyTypeNeeded, undefined, activeBusiness.id);
+        setParties(pList);
+        setSelectedParty((cur) => (cur ? pList.find((p) => p.id === cur.id) || cur : cur));
+      })();
+    }, [activeBusiness, partyTypeNeeded])
+  );
 
   const handleSelectProduct = async (product: Item) => {
     setProductModal(false);
@@ -190,7 +248,7 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
       unit_factor: defaultUnit?.factor || 1,
       qty: 1,
       price: defaultPrice,
-      gst_rate: product.gst_rate || 0,
+      gst_rate: noTax ? 0 : product.gst_rate || 0,
       mrp: product.mrp || 0,
       track_serials: product.track_serials,
       disc_trade_pct: 0,
@@ -211,8 +269,9 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
       return;
     }
 
-    const calculated = computeLineMath(currentLine);
-    const finalized = { ...currentLine, ...calculated };
+    const working = noTax ? { ...currentLine, gst_rate: 0 } : currentLine;
+    const calculated = computeLineMath(working);
+    const finalized = { ...working, ...calculated };
 
     if (editingLineIndex !== null) {
       const updated = [...lineItems];
@@ -230,17 +289,24 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
     setLineItems(updated);
   };
 
-  const handleSaveInvoice = async () => {
-    const gate = ensureWritable();
-    if (!gate.allowed) {
-      Alert.alert('Read-Only Mode', gate.reason || 'Your license is not active.');
-      return;
-    }
-    if (lineItems.length === 0) {
-      Alert.alert('No Items', 'Please add at least one line item to the voucher');
-      return;
-    }
+  /** Party details that are still missing (walk-in customers have most of them). */
+  const missingPartyFields = (p?: Party | null): string[] => {
+    if (!p) return [];
+    const missing: string[] = [];
+    if (!String(p.phone || '').trim()) missing.push('phone');
+    if (!String(p.gstin || '').trim()) missing.push('GSTIN');
+    if (!String(p.address || '').trim()) missing.push('address');
+    return missing;
+  };
 
+  /** Open the party profile so walk-in details can be completed later. */
+  const openPartyProfile = (partyId?: number | null, presetWalkIn = false) => {
+    if (partyId) navigation.navigate('PartyForm', { id: partyId });
+    else navigation.navigate('PartyForm', { type: partyTypeNeeded, walkIn: presetWalkIn });
+  };
+
+  const saveInvoiceNow = async () => {
+    if (!activeBusiness) return;
     setLoading(true);
     try {
       const shipTo = shipToSame && selectedParty
@@ -257,8 +323,10 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
             consignee_state: consigneeState,
           };
 
+      const savedLines = noTax ? lineItems.map((l) => ({ ...l, gst_rate: 0 })) : lineItems;
+
       const inv = await invoiceService.createInvoice(
-        activeBusiness!.id,
+        activeBusiness.id,
         {
           type,
           note_kind: noteKind,
@@ -271,6 +339,7 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
           ...shipTo,
           place_of_supply: placeOfSupply,
           gst_type: gstType,
+          bill_type: billType,
           po_no: poNo,
           po_date: poDate,
           other_ref: otherRef,
@@ -287,22 +356,73 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
           ack_no: ackNo,
           ack_date: ackDate,
         },
-        lineItems,
+        savedLines,
         false,
         user?.id
       );
 
-      Alert.alert('Success', `${type.toUpperCase()} ${inv.invoice_no} created successfully!`, [
+      const docName = billType === 'non_gst' ? 'NON-GST BILL' : type.toUpperCase();
+      const missing = missingPartyFields(selectedParty);
+      const buttons: any[] = [
         {
           text: 'View Details',
           onPress: () => navigation.replace('InvoiceDetail', { id: inv.id }),
         },
-      ]);
+      ];
+      // Walk-in / incomplete customer → offer to complete the profile now or later.
+      if (selectedParty && (partyService.isWalkIn(selectedParty) || missing.length > 0)) {
+        buttons.push({
+          text: 'Add Customer Details',
+          onPress: () => {
+            navigation.replace('InvoiceDetail', { id: inv.id });
+            openPartyProfile(selectedParty.id);
+          },
+        });
+      }
+      buttons.push({ text: 'Done', style: 'cancel' });
+
+      Alert.alert(
+        'Success',
+        `${docName} ${inv.invoice_no} created successfully!` +
+          (selectedParty && missing.length
+            ? `\n\n${selectedParty.name} is saved with only a name — you can add ${missing.join(', ')} later from the bill or the party list.`
+            : ''),
+        buttons
+      );
     } catch (e: any) {
       Alert.alert('Error Creating Voucher', e.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSaveInvoice = async () => {
+    const gate = ensureWritable();
+    if (!gate.allowed) {
+      Alert.alert('Read-Only Mode', gate.reason || 'Your license is not active.');
+      return;
+    }
+    if (lineItems.length === 0) {
+      Alert.alert('No Items', 'Please add at least one line item to the voucher');
+      return;
+    }
+
+    // Walk-in customers are billed with a name only — remind once, then save.
+    const missing = missingPartyFields(selectedParty);
+    if (selectedParty && (partyService.isWalkIn(selectedParty) || missing.length > 0)) {
+      Alert.alert(
+        'Incomplete Customer Details',
+        `"${selectedParty.name}" has no ${missing.join(' / ') || 'details'} on record.\n\nYou can still save this bill — the details can be updated later from the bill or the party list.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Update Now', onPress: () => openPartyProfile(selectedParty.id) },
+          { text: 'Save Anyway', onPress: () => saveInvoiceNow() },
+        ]
+      );
+      return;
+    }
+
+    await saveInvoiceNow();
   };
 
   const featOn = (k: keyof CompanyFeatures) =>
@@ -322,8 +442,6 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
     irn, ackNo, ackDate,
   ].filter((v) => v && String(v).trim()).length;
 
-  const partyTypeNeeded = type === 'purchase' || noteKind === 'debit' ? 'supplier' : 'customer';
-  const partyTypeLabel = partyTypeNeeded === 'supplier' ? 'Supplier' : 'Customer';
 
   const filteredParties = partySearch.trim()
     ? parties.filter((p) => {
@@ -338,6 +456,7 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
 
   const resetNewPartyForm = () => {
     setAddingParty(false);
+    setWalkInMode(false);
     setNewPartyName('');
     setNewPartyPhone('');
     setNewPartyGstin('');
@@ -345,21 +464,36 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
     setNewPartyAddress('');
   };
 
+  /** Open the inline "new party" form — walk-in mode asks for a name only. */
+  const startAddParty = (walkIn: boolean, name = '') => {
+    setNewPartyName(name || partySearch.trim());
+    setWalkInMode(walkIn);
+    setAddingParty(true);
+    setPartyModal(true);
+  };
+
   const handleQuickAddParty = async () => {
-    if (!newPartyName.trim()) {
+    const name = newPartyName.trim();
+    if (!name) {
       Alert.alert('Name Required', `Please enter the ${partyTypeLabel.toLowerCase()} name`);
       return;
     }
     setSavingParty(true);
     try {
-      const created = await partyService.createParty({
-        name: newPartyName,
-        type: partyTypeNeeded,
-        phone: newPartyPhone,
-        gstin: newPartyGstin,
-        state: newPartyState,
-        address: newPartyAddress,
-      });
+      // Walk-in customer: the name alone is enough — phone, GSTIN, state and
+      // address stay blank and can be updated later from the party profile.
+      const created = await partyService.createParty(
+        walkInMode
+          ? { name, type: partyTypeNeeded }
+          : {
+              name,
+              type: partyTypeNeeded,
+              phone: newPartyPhone,
+              gstin: newPartyGstin,
+              state: newPartyState,
+              address: newPartyAddress,
+            }
+      );
       const pList = await partyService.getAllParties(partyTypeNeeded, undefined, activeBusiness!.id);
       setParties(pList);
       setSelectedParty(created);
@@ -385,7 +519,14 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
         {/* Header Title */}
         <View style={styles.headerRow}>
           <Text style={[styles.title, { color: colors.text }]}>{screenTitle}</Text>
-          <Badge label={type.toUpperCase()} variant="primary" />
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            {billType === 'non_gst' ? (
+              <Badge label="NON-GST" variant="warning" />
+            ) : gstType === 'nil' ? (
+              <Badge label="NIL / EXEMPT" variant="neutral" />
+            ) : null}
+            <Badge label={type.toUpperCase()} variant="primary" />
+          </View>
         </View>
 
         {/* Voucher Metadata */}
@@ -417,26 +558,100 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
             onPress={() => setPartyModal(true)}
           >
             <View style={{ flex: 1 }}>
-              <Text style={[styles.partySelectName, { color: selectedParty ? colors.text : colors.textMuted }]}>
-                {selectedParty ? selectedParty.name : 'Select or Search Party...'}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text
+                  style={[styles.partySelectName, { color: selectedParty ? colors.text : colors.textMuted, flex: 1 }]}
+                  numberOfLines={1}
+                >
+                  {selectedParty ? selectedParty.name : 'Select or Search Party...'}
+                </Text>
+                {selectedParty && partyService.isWalkIn(selectedParty) ? (
+                  <Badge label="WALK-IN" variant="info" />
+                ) : null}
+              </View>
               {selectedParty?.gstin ? (
                 <Text style={{ fontSize: 11, color: colors.textMuted }}>
                   GSTIN: {selectedParty.gstin} • State: {selectedParty.state || 'N/A'}
+                </Text>
+              ) : selectedParty ? (
+                <Text style={{ fontSize: 11, color: colors.textMuted }}>
+                  Name only — phone / GSTIN can be added later
                 </Text>
               ) : null}
             </View>
             <Ionicons name="search" size={20} color={colors.palette.primary} />
           </TouchableOpacity>
 
-          {/* GST Tax Type */}
-          <Text style={[styles.inputLabel, { color: colors.text, marginTop: 12 }]}>GST Tax Type</Text>
-          <View style={styles.gstTypeRow}>
+          <View style={styles.walkInRow}>
+            <TouchableOpacity
+              style={[styles.walkInBtn, { borderColor: colors.palette.primary, backgroundColor: colors.palette.primaryLight }]}
+              onPress={() => startAddParty(true)}
+            >
+              <Ionicons name="person-add-outline" size={15} color={colors.palette.primaryDark} />
+              <Text style={[styles.walkInBtnText, { color: colors.palette.primaryDark }]}>
+                Walk-in {partyTypeLabel} (name only)
+              </Text>
+            </TouchableOpacity>
+            {selectedParty && (missingPartyFields(selectedParty).length > 0 || partyService.isWalkIn(selectedParty)) ? (
+              <TouchableOpacity
+                style={[styles.walkInBtn, { borderColor: colors.border }]}
+                onPress={() => openPartyProfile(selectedParty.id)}
+              >
+                <Ionicons name="create-outline" size={15} color={colors.textSecondary} />
+                <Text style={[styles.walkInBtnText, { color: colors.textSecondary }]}>Update details</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
+          {/* Bill Type: GST invoice vs non-GST bill of supply */}
+          <Text style={[styles.inputLabel, { color: colors.text, marginTop: 14 }]}>Bill Type</Text>
+          <View style={[styles.billTypeRow, { borderColor: colors.border, backgroundColor: colors.surfaceSubtle }]}>
             {([
-              { key: 'auto', label: `Auto (${autoInter ? 'IGST' : 'CGST+SGST'})` },
-              { key: 'intra', label: 'CGST + SGST' },
-              { key: 'inter', label: 'IGST' },
-            ] as const).map((opt) => (
+              { key: 'gst', label: 'GST Bill', sub: 'Tax Invoice' },
+              { key: 'non_gst', label: 'Non-GST Bill', sub: 'Bill of Supply' },
+            ] as const).map((opt) => {
+              const active = billType === opt.key;
+              return (
+                <TouchableOpacity
+                  key={opt.key}
+                  style={[
+                    styles.billTypeChip,
+                    { backgroundColor: active ? colors.palette.primary : 'transparent' },
+                  ]}
+                  onPress={() => setBillType(opt.key)}
+                >
+                  <Text style={[styles.billTypeLabel, { color: active ? '#ffffff' : colors.text }]}>{opt.label}</Text>
+                  <Text style={[styles.billTypeSub, { color: active ? 'rgba(255,255,255,0.85)' : colors.textMuted }]}>
+                    {opt.sub}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <Text style={{ fontSize: 10.5, color: colors.textMuted, marginTop: 6 }}>
+            {billType === 'non_gst'
+              ? 'Non-GST bill = bill of supply / cash memo for unregistered, composition or exempt buyers. No GST is charged and the bill prints without tax columns.'
+              : 'GST bill = regular tax invoice with CGST + SGST or IGST.'}
+          </Text>
+
+          {/* Tax / Supply Type */}
+          <Text style={[styles.inputLabel, { color: colors.text, marginTop: 12 }]}>
+            {billType === 'non_gst' ? 'Supply Type' : 'GST Tax Type'}
+          </Text>
+          <View style={styles.gstTypeRow}>
+            {(billType === 'non_gst'
+              ? ([
+                  { key: 'intra', label: 'Intra-state' },
+                  { key: 'inter', label: 'Inter-state' },
+                  { key: 'nil', label: 'Nil / Exempt' },
+                ] as const)
+              : ([
+                  { key: 'auto', label: `Auto (${autoInter ? 'IGST' : 'CGST+SGST'})` },
+                  { key: 'intra', label: 'CGST + SGST' },
+                  { key: 'inter', label: 'IGST' },
+                  { key: 'nil', label: 'Nil / Exempt' },
+                ] as const)
+            ).map((opt) => (
               <TouchableOpacity
                 key={opt.key}
                 style={[
@@ -446,7 +661,7 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
                     borderColor: gstType === opt.key ? colors.palette.primary : colors.border,
                   },
                 ]}
-                onPress={() => setGstType(opt.key)}
+                onPress={() => setGstType(opt.key as GstType)}
               >
                 <Text
                   style={{
@@ -461,8 +676,9 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
             ))}
           </View>
           <Text style={{ fontSize: 10.5, color: colors.textMuted, marginTop: 6 }}>
-            Auto compares customer & company GST states. SEZ / MIHAN units charge IGST even within
-            the same state — select IGST to override.
+            {noTax
+              ? 'No tax is charged on this bill — line GST rates are set to 0% and the supply type is recorded for your registers only.'
+              : 'Auto compares customer & company GST states. SEZ / MIHAN units charge IGST even within the same state — select IGST to override. Pick Nil / Exempt for nil-rated goods.'}
           </Text>
         </Card>
 
@@ -499,7 +715,8 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.lineName, { color: colors.text }]}>{l.item_name}</Text>
                   <Text style={[styles.lineDetails, { color: colors.textMuted }]}>
-                    {l.qty} {l.unit || 'PCS'} × {formatCurrency(l.price)} • GST: {l.gst_rate}%
+                    {l.qty} {l.unit || 'PCS'} × {formatCurrency(l.price)} •{' '}
+                    {noTax ? 'GST: not applicable' : `GST: ${l.gst_rate}%`}
                     {l.batch_no ? ` • Batch: ${l.batch_no}` : ''}
                   </Text>
                 </View>
@@ -522,11 +739,18 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
           <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 12 }]}>Summary & Totals</Text>
 
           <View style={styles.summaryRow}>
-            <Text style={{ color: colors.textMuted }}>Subtotal (Taxable):</Text>
+            <Text style={{ color: colors.textMuted }}>{noTax ? 'Subtotal:' : 'Subtotal (Taxable):'}</Text>
             <Text style={{ fontWeight: '600', color: colors.text }}>{formatCurrency(subtotal)}</Text>
           </View>
 
-          {effectiveInter ? (
+          {noTax ? (
+            <View style={styles.summaryRow}>
+              <Text style={{ color: colors.textMuted }}>GST:</Text>
+              <Text style={{ fontWeight: '600', color: colors.textMuted }}>
+                {billType === 'non_gst' ? 'Not applicable (non-GST bill)' : 'Nil / Exempt'}
+              </Text>
+            </View>
+          ) : effectiveInter ? (
             <View style={styles.summaryRow}>
               <Text style={{ color: colors.textMuted }}>
                 IGST{gstType === 'inter' ? ' (forced — SEZ/inter-state)' : ''}:
@@ -739,7 +963,7 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
 
         {/* Save Button */}
         <Button
-          title={`Save & Finalize ${type.toUpperCase()}`}
+          title={`Save & Finalize ${billType === 'non_gst' ? 'NON-GST BILL' : type.toUpperCase()}`}
           onPress={handleSaveInvoice}
           loading={loading}
           size="lg"
@@ -781,7 +1005,11 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
               >
                 <View style={styles.modalHeader}>
                   <Text style={[styles.modalTitle, { color: colors.text }]}>
-                    {addingParty ? `New ${partyTypeLabel}` : `Select ${partyTypeLabel}`}
+                    {addingParty
+                      ? walkInMode
+                        ? `Walk-in ${partyTypeLabel}`
+                        : `New ${partyTypeLabel}`
+                      : `Select ${partyTypeLabel}`}
                   </Text>
                   <TouchableOpacity
                     onPress={() => {
@@ -803,45 +1031,72 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
                   >
+                    {/* Walk-in toggle: name only, everything else later */}
+                    <TouchableOpacity
+                      style={styles.checkboxRow}
+                      activeOpacity={0.7}
+                      onPress={() => setWalkInMode(!walkInMode)}
+                    >
+                      <Ionicons
+                        name={walkInMode ? 'checkbox' : 'square-outline'}
+                        size={20}
+                        color={walkInMode ? colors.palette.primary : colors.textMuted}
+                      />
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>
+                          Walk-in {partyTypeLabel.toLowerCase()} — name only
+                        </Text>
+                        <Text style={{ fontSize: 11, color: colors.textMuted }}>
+                          Bill now, add phone / GSTIN / address later from the bill or party list.
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+
                     <Input
                       label={`${partyTypeLabel} Name *`}
                       value={newPartyName}
                       onChangeText={setNewPartyName}
-                      placeholder={`e.g. ${partyTypeNeeded === 'supplier' ? 'Metro Traders' : 'Sunrise Supermarket'}`}
+                      placeholder={walkInMode ? 'e.g. Walk-in Customer' : `e.g. ${partyTypeNeeded === 'supplier' ? 'Metro Traders' : 'Sunrise Supermarket'}`}
                       autoFocus
                     />
-                    <View style={styles.grid2}>
-                      <Input
-                        label="Phone"
-                        value={newPartyPhone}
-                        onChangeText={setNewPartyPhone}
-                        keyboardType="phone-pad"
-                        placeholder="Mobile number"
-                        containerStyle={{ flex: 1 }}
-                      />
-                      <StateSelect
-                        label="State"
-                        value={newPartyState}
-                        onChange={(name) => setNewPartyState(name)}
-                        containerStyle={{ flex: 1 }}
-                      />
-                    </View>
-                    <Input
-                      label="GSTIN (Optional)"
-                      value={newPartyGstin}
-                      onChangeText={(t) => setNewPartyGstin(t.toUpperCase())}
-                      autoCapitalize="characters"
-                      maxLength={15}
-                      placeholder="15-digit GSTIN"
-                    />
-                    <Input
-                      label="Address (Optional)"
-                      value={newPartyAddress}
-                      onChangeText={setNewPartyAddress}
-                      placeholder="Billing address"
-                    />
+
+                    {!walkInMode && (
+                      <>
+                        <View style={styles.grid2}>
+                          <Input
+                            label="Phone"
+                            value={newPartyPhone}
+                            onChangeText={setNewPartyPhone}
+                            keyboardType="phone-pad"
+                            placeholder="Mobile number"
+                            containerStyle={{ flex: 1 }}
+                          />
+                          <StateSelect
+                            label="State"
+                            value={newPartyState}
+                            onChange={(name) => setNewPartyState(name)}
+                            containerStyle={{ flex: 1 }}
+                          />
+                        </View>
+                        <Input
+                          label="GSTIN (Optional)"
+                          value={newPartyGstin}
+                          onChangeText={(t) => setNewPartyGstin(t.toUpperCase())}
+                          autoCapitalize="characters"
+                          maxLength={15}
+                          placeholder="15-digit GSTIN"
+                        />
+                        <Input
+                          label="Address (Optional)"
+                          value={newPartyAddress}
+                          onChangeText={setNewPartyAddress}
+                          placeholder="Billing address"
+                        />
+                      </>
+                    )}
+
                     <Button
-                      title={`Save & Select ${partyTypeLabel}`}
+                      title={walkInMode ? `Save Walk-in ${partyTypeLabel}` : `Save & Select ${partyTypeLabel}`}
                       onPress={handleQuickAddParty}
                       loading={savingParty}
                       style={{ marginTop: 4 }}
@@ -859,15 +1114,23 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
 
                     <TouchableOpacity
                       style={[styles.addPartyBtn, { backgroundColor: colors.palette.primaryLight }]}
-                      onPress={() => {
-                        setNewPartyName(partySearch.trim());
-                        setAddingParty(true);
-                      }}
+                      onPress={() => startAddParty(false)}
                     >
                       <Ionicons name="person-add" size={16} color={colors.palette.primaryDark} />
                       <Text style={{ color: colors.palette.primaryDark, fontWeight: '700', fontSize: 13 }}>
                         + Add New {partyTypeLabel}
                         {partySearch.trim() ? ` "${partySearch.trim()}"` : ''}
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.addPartyBtn, { backgroundColor: colors.surfaceSubtle, marginTop: -4 }]}
+                      onPress={() => startAddParty(true)}
+                    >
+                      <Ionicons name="flash-outline" size={16} color={colors.textSecondary} />
+                      <Text style={{ color: colors.textSecondary, fontWeight: '700', fontSize: 13 }}>
+                        Walk-in {partyTypeLabel} — bill with name only
+                        {partySearch.trim() ? ` ("${partySearch.trim()}")` : ''}
                       </Text>
                     </TouchableOpacity>
 
@@ -895,10 +1158,16 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
                           }}
                         >
                           <View style={{ flex: 1 }}>
-                            <Text style={[styles.partyItemName, { color: colors.text }]}>{item.name}</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              <Text style={[styles.partyItemName, { color: colors.text, flex: 1 }]} numberOfLines={1}>
+                                {item.name}
+                              </Text>
+                              {partyService.isWalkIn(item) ? <Badge label="WALK-IN" variant="info" /> : null}
+                            </View>
                             <Text style={{ fontSize: 11, color: colors.textMuted }}>
-                              {item.phone || 'No phone'} • {item.state || 'India'}
-                              {item.gstin ? ` • ${item.gstin}` : ''}
+                              {partyService.isWalkIn(item)
+                                ? 'Name only — tap to bill, details can be added later'
+                                : `${item.phone || 'No phone'} • ${item.state || 'India'}${item.gstin ? ` • ${item.gstin}` : ''}`}
                             </Text>
                           </View>
                           <Text style={{ fontSize: 12, fontWeight: '700', color: colors.palette.primary }}>
@@ -1096,10 +1365,13 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
 
                   <View style={styles.grid2}>
                     <Input
-                      label="GST Rate %"
-                      value={String(currentLine.gst_rate || '')}
-                      onChangeText={(t) => setCurrentLine({ ...currentLine, gst_rate: parseFloat(t) || 0 })}
+                      label={noTax ? 'GST Rate % (not applicable)' : 'GST Rate %'}
+                      value={noTax ? '0' : String(currentLine.gst_rate || '')}
+                      onChangeText={(t) =>
+                        !noTax && setCurrentLine({ ...currentLine, gst_rate: parseFloat(t) || 0 })
+                      }
                       keyboardType="numeric"
+                      editable={!noTax}
                       containerStyle={{ flex: 1 }}
                     />
                     <Input
@@ -1205,6 +1477,47 @@ const styles = StyleSheet.create({
   detailGroupTitle: {
     fontSize: 13,
     fontWeight: '700',
+  },
+  walkInRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  walkInBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  walkInBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  billTypeRow: {
+    flexDirection: 'row',
+    borderRadius: 10,
+    borderWidth: 1,
+    padding: 3,
+    gap: 3,
+  },
+  billTypeChip: {
+    flex: 1,
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+  },
+  billTypeLabel: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  billTypeSub: {
+    fontSize: 10,
+    marginTop: 1,
   },
   gstTypeRow: {
     flexDirection: 'row',

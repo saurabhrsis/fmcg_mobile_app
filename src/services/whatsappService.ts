@@ -1,6 +1,7 @@
 import { Linking } from 'react-native';
 import { Invoice, Payment, Party, Business } from '../types';
 import { formatCurrency, formatDate } from '../utils/formatters';
+import { isNonGstBill, isNilRated } from '../utils/gstState';
 
 export const whatsappService = {
   buildInvoiceMessage(biz: Business, inv: Invoice): string {
@@ -9,23 +10,35 @@ export const whatsappService = {
       .map((l) => `• ${l.item_name} × ${l.qty} ${l.unit || ''} = ${formatCurrency(l.line_total)}`)
       .join('\n');
 
+    const nonGst = isNonGstBill(inv);
+    const noTax = isNilRated(inv);
+    const docTitle = inv.type === 'quotation'
+      ? 'QUOTATION'
+      : inv.note_kind
+      ? inv.note_kind.toUpperCase() + ' NOTE'
+      : nonGst
+      ? 'BILL OF SUPPLY (NON-GST)'
+      : 'TAX INVOICE';
+    const taxLine = noTax
+      ? `GST: ${nonGst ? 'Not applicable (non-GST bill)' : 'Nil / Exempt'}\n`
+      : `Tax (GST): ${formatCurrency(inv.tax_total)}\n`;
+
     return `*${biz.name}*
 ${biz.address}
 Phone: ${biz.phone}
 ${biz.gstin ? `GSTIN: ${biz.gstin}\n` : ''}
 ----------------------------------------
-*${inv.type === 'quotation' ? 'QUOTATION' : inv.note_kind ? (inv.note_kind.toUpperCase() + ' NOTE') : 'TAX INVOICE'}*
+*${docTitle}*
 Bill No: *${inv.invoice_no}*
 Date: ${formatDate(inv.date)}
-Customer: *${inv.party_name || 'Cash Customer'}*
+Customer: *${inv.party_name || 'Walk-in Customer'}*
 
 *Items:*
 ${itemSummary}
 
 ----------------------------------------
 Subtotal: ${formatCurrency(inv.subtotal)}
-${inv.discount ? `Discount: -${formatCurrency(inv.discount)}\n` : ''}Tax (GST): ${formatCurrency(inv.tax_total)}
-*Grand Total: ${formatCurrency(inv.total)}*
+${inv.discount ? `Discount: -${formatCurrency(inv.discount)}\n` : ''}${taxLine}*Grand Total: ${formatCurrency(inv.total)}*
 Paid: ${formatCurrency(inv.paid)}
 *Balance Due: ${formatCurrency(Math.max(0, inv.total - inv.paid))}*
 

@@ -151,6 +151,11 @@ export const DashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) =
           <StatCard
             title="Month Sales"
             value={formatCurrency(metrics?.monthSales || 0)}
+            subtitle={
+              metrics?.monthNonGstSales
+                ? `incl. ${formatCurrency(metrics.monthNonGstSales)} non-GST`
+                : undefined
+            }
             icon="trending-up"
             color={colors.palette.success}
             onPress={() => navigation.navigate('InvoiceList', { type: 'sale' })}

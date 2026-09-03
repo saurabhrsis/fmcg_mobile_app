@@ -2,7 +2,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Invoice, Business, InvoiceItem } from '../types';
 import { formatCurrency, formatDate, amountInWords } from '../utils/formatters';
-import { isInterState, stateCode } from '../utils/gstState';
+import { isInterState, isNonGstBill, isNilRated, stateCode, supplyTypeLabel } from '../utils/gstState';
 
 export const printService = {
   generateInvoiceHtml(biz: Business, inv: Invoice): string {
@@ -11,14 +11,20 @@ export const printService = {
     const items = inv.items || [];
     const isQuote = inv.type === 'quotation';
     const isNote = inv.note_kind === 'credit' || inv.note_kind === 'debit';
+    // Non-GST bills (bill of supply) and nil-rated / exempt supplies carry no
+    // tax, so every GST column, tax row and tax summary is dropped from them.
+    const nonGst = isNonGstBill(inv);
+    const noTax = isNilRated(inv);
 
     let title = biz.bill_title || 'TAX INVOICE';
     if (isQuote) title = 'QUOTATION / ESTIMATE';
     else if (inv.note_kind === 'credit') title = 'CREDIT NOTE';
     else if (inv.note_kind === 'debit') title = 'DEBIT NOTE';
-    else if (inv.type === 'purchase') title = 'PURCHASE VOUCHER';
+    else if (inv.type === 'purchase') title = nonGst ? 'NON-GST PURCHASE BILL' : 'PURCHASE VOUCHER';
+    else if (nonGst) title = 'BILL OF SUPPLY';
+    else if (noTax) title = 'TAX INVOICE (NIL / EXEMPT)';
 
-    // HSN Summary calculation
+    // HSN Summary calculation (tax columns are skipped on non-GST bills)
     const hsnMap = new Map<string, { hsn: string; taxable: number; cgst: number; sgst: number; igst: number; totalTax: number }>();
     items.forEach((it) => {
       const hsn = it.hsn || 'NA';
@@ -51,7 +57,7 @@ export const printService = {
         <td style="text-align: right;">${formatCurrency(it.price)}</td>
         <td style="text-align: right;">${it.disc_trade_amt || it.disc_cd_amt || it.discount ? formatCurrency((it.disc_trade_amt || 0) + (it.disc_cd_amt || 0) + (it.disc_sd_amt || 0)) : '-'}</td>
         <td style="text-align: right;">${formatCurrency(it.taxable)}</td>
-        <td style="text-align: center;">${it.gst_rate}%</td>
+        ${noTax ? '' : `<td style="text-align: center;">${it.gst_rate}%</td>`}
         <td style="text-align: right; font-weight: 600;">${formatCurrency(it.line_total)}</td>
       </tr>
     `
@@ -65,14 +71,16 @@ export const printService = {
         <td>${h.hsn}</td>
         <td style="text-align: right;">${formatCurrency(h.taxable)}</td>
         ${
-          !inter
+          noTax
+            ? ''
+            : !inter
             ? `
           <td style="text-align: right;">${formatCurrency(h.cgst)}</td>
           <td style="text-align: right;">${formatCurrency(h.sgst)}</td>
         `
             : `<td style="text-align: right;">${formatCurrency(h.igst)}</td>`
         }
-        <td style="text-align: right; font-weight: 600;">${formatCurrency(h.totalTax)}</td>
+        ${noTax ? '' : `<td style="text-align: right; font-weight: 600;">${formatCurrency(h.totalTax)}</td>`}
       </tr>
     `
       )
@@ -228,7 +236,7 @@ export const printService = {
         ${biz.logo ? `<img src="${biz.logo}" style="height: 52px; max-width: 120px; object-fit: contain; background: #ffffff; border-radius: 6px; padding: 3px;" />` : ''}
         <div>
           <h1>${title}</h1>
-          <div style="font-size: 11px; opacity: 0.9;">Original For Recipient</div>
+          <div style="font-size: 11px; opacity: 0.9;">${nonGst ? 'Bill of Supply — Not a Tax Invoice' : 'Original For Recipient'}</div>
         </div>
       </div>
       <div style="text-align: right;">
@@ -249,10 +257,10 @@ export const printService = {
 
       <div class="info-card">
         <div class="label" style="font-size: 10px; text-transform: uppercase;">${biz.bill_billto_label || 'Billed To (Buyer)'}:</div>
-        <div class="name">${inv.party_name || 'Cash Customer'}</div>
+        <div class="name">${inv.party_name || 'Walk-in Customer'}</div>
         <div>${inv.party_address || '-'}</div>
         <div><span class="label">Phone:</span> ${inv.party_phone || '-'}</div>
-        ${inv.party_gstin ? `<div><span class="label">GSTIN:</span> <strong>${inv.party_gstin}</strong> (State: ${inv.party_state || ''})</div>` : ''}
+        ${inv.party_gstin ? `<div><span class="label">GSTIN:</span> <strong>${inv.party_gstin}</strong> (State: ${inv.party_state || ''})</div>` : `<div><span class="label">GSTIN:</span> ${nonGst ? 'Unregistered buyer' : 'Not provided'}</div>`}
         ${inv.place_of_supply ? `<div><span class="label">Place of Supply:</span> ${inv.place_of_supply}</div>` : ''}
       </div>
     </div>
@@ -271,11 +279,12 @@ export const printService = {
     }
 
     ${
-      inv.eway_no || inv.po_no || inv.other_ref || inv.pay_terms || inv.dispatched_through ||
+      nonGst || noTax || inv.eway_no || inv.po_no || inv.other_ref || inv.pay_terms || inv.dispatched_through ||
       inv.delivery_note || inv.dispatch_doc || inv.destination || inv.terms_delivery ||
       inv.no_of_packets || inv.irn
         ? `
     <div class="meta-bar">
+      ${nonGst || noTax ? `<div class="meta-item"><span class="meta-label">Supply Type</span><span class="meta-val">${supplyTypeLabel(inv)}</span></div>` : ''}
       ${inv.po_no ? `<div class="meta-item"><span class="meta-label">Buyer's Order No & Date</span><span class="meta-val">${inv.po_no} ${inv.po_date ? `(${formatDate(inv.po_date)})` : ''}</span></div>` : ''}
       ${inv.other_ref ? `<div class="meta-item"><span class="meta-label">Reference No & Date</span><span class="meta-val">${inv.other_ref}</span></div>` : ''}
       ${inv.pay_terms ? `<div class="meta-item"><span class="meta-label">Mode/Terms of Payment</span><span class="meta-val">${inv.pay_terms}</span></div>` : ''}
@@ -303,7 +312,7 @@ export const printService = {
           <th style="text-align: right;">Rate</th>
           <th style="text-align: right;">Disc</th>
           <th style="text-align: right;">Taxable</th>
-          <th style="text-align: center;">GST</th>
+          ${noTax ? '' : '<th style="text-align: center;">GST</th>'}
           <th style="text-align: right;">Amount</th>
         </tr>
       </thead>
@@ -311,6 +320,19 @@ export const printService = {
         ${itemRowsHtml}
       </tbody>
     </table>
+
+    ${
+      nonGst
+        ? `<div style="font-size: 10.5px; color: #475569; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 8px 10px; margin-bottom: 14px;">
+             <strong>Declaration:</strong> This is a bill of supply issued in place of a tax invoice. No GST has been charged on this bill
+             (${supplyTypeLabel(inv).replace('Non-GST · ', '').toLowerCase()}).
+           </div>`
+        : noTax
+        ? `<div style="font-size: 10.5px; color: #475569; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 8px 10px; margin-bottom: 14px;">
+             <strong>Declaration:</strong> Nil-rated / exempt supply — no GST is chargeable on the items in this invoice.
+           </div>`
+        : ''
+    }
 
     <div class="summary-section">
       <div>
@@ -332,21 +354,23 @@ export const printService = {
         </div>
 
         <div style="margin-top: 10px;">
-          <div style="font-size: 10px; font-weight: 600; text-transform: uppercase; color: #64748b;">HSN/SAC Tax Summary:</div>
+          <div style="font-size: 10px; font-weight: 600; text-transform: uppercase; color: #64748b;">${noTax ? 'HSN/SAC Value Summary:' : 'HSN/SAC Tax Summary:'}</div>
           <table class="hsn-table">
             <thead>
               <tr>
                 <th>HSN</th>
-                <th style="text-align: right;">Taxable</th>
+                <th style="text-align: right;">${noTax ? 'Value' : 'Taxable'}</th>
                 ${
-                  !inter
+                  noTax
+                    ? ''
+                    : !inter
                     ? `
                   <th style="text-align: right;">CGST</th>
                   <th style="text-align: right;">SGST</th>
                 `
                     : '<th style="text-align: right;">IGST</th>'
                 }
-                <th style="text-align: right;">Total Tax</th>
+                ${noTax ? '' : '<th style="text-align: right;">Total Tax</th>'}
               </tr>
             </thead>
             <tbody>
@@ -358,7 +382,7 @@ export const printService = {
 
       <div class="totals-box">
         <div class="total-row">
-          <span>Taxable Subtotal:</span>
+          <span>${noTax ? 'Subtotal:' : 'Taxable Subtotal:'}</span>
           <strong>${formatCurrency(inv.subtotal)}</strong>
         </div>
         ${
@@ -372,7 +396,14 @@ export const printService = {
             : ''
         }
         ${
-          !inter
+          noTax
+            ? `
+        <div class="total-row">
+          <span>GST:</span>
+          <span>${nonGst ? 'Not applicable (Non-GST bill)' : 'Nil / Exempt'}</span>
+        </div>
+        `
+            : !inter
             ? `
         <div class="total-row">
           <span>CGST:</span>
