@@ -22,9 +22,9 @@ import { syncService, MergeStats } from '../../services/syncService';
 
 type Busy = '' | 'test' | 'push' | 'pull' | 'full' | 'export' | 'import';
 
-export const DesktopSyncScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+export const DesktopSyncScreen: React.FC<{ navigation: any; route: any }> = ({ navigation, route }) => {
   const { colors } = useTheme();
-  const { refreshBusinesses } = useBusiness();
+  const { refreshBusinesses, businesses } = useBusiness();
 
   const [url, setUrl] = useState('');
   const [apiKey, setApiKey] = useState('');
@@ -269,6 +269,21 @@ export const DesktopSyncScreen: React.FC<{ navigation: any }> = ({ navigation })
           Two-way data exchange with the RightServe desktop application
         </Text>
 
+      {/* Welcome banner for users who chose "copy from desktop" at registration */}
+      {route?.params?.welcome && businesses.length === 0 && (
+        <View style={[styles.welcomeBox, { backgroundColor: '#ECFDF5', borderColor: '#16A34A' }]}>
+          <Ionicons name="download-outline" size={22} color="#16A34A" />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.welcomeTitle}>Copy your PC data to this phone</Text>
+            <Text style={styles.welcomeText}>
+              No need to type your business details again — scan the QR shown in the desktop app
+              (Settings → Mobile Sync) and tap “Full Sync”. Your firm, items, parties and bills come
+              across automatically.
+            </Text>
+          </View>
+        </View>
+      )}
+
       {/* Hero + first-run setup */}
       <Card>
         <View style={styles.heroRow}>
@@ -499,6 +514,20 @@ export const DesktopSyncScreen: React.FC<{ navigation: any }> = ({ navigation })
       </Card>
 
       <View style={{ height: 30 }} />
+
+      {/* Manual fallback — a user who skipped business entry can still set up by hand */}
+      {businesses.length === 0 && (
+        <TouchableOpacity
+          style={[styles.manualRow, { borderColor: colors.border }]}
+          activeOpacity={0.7}
+          onPress={() => navigation.navigate('BusinessForm', {})}
+        >
+          <Ionicons name="create-outline" size={17} color={colors.palette.primary} />
+          <Text style={[styles.manualText, { color: colors.palette.primary }]}>
+            Prefer to type it in? Create your firm manually
+          </Text>
+        </TouchableOpacity>
+      )}
       </ScrollView>
     </ScreenWrapper>
   );
@@ -512,6 +541,40 @@ const styles = StyleSheet.create({
   pageTitle: {
     fontSize: 18,
     fontWeight: '800',
+  },
+  welcomeBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+  },
+  welcomeTitle: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: '#065F46',
+  },
+  welcomeText: {
+    fontSize: 11.5,
+    lineHeight: 16,
+    color: '#047857',
+    marginTop: 3,
+  },
+  manualRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 12,
+    marginBottom: 12,
+  },
+  manualText: {
+    fontSize: 12.5,
+    fontWeight: '700',
   },
   heroRow: {
     flexDirection: 'row',

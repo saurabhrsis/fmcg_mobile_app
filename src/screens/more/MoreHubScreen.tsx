@@ -64,11 +64,11 @@ export const MoreHubScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
       action: () => navigation.navigate('UserList'),
     },
     {
-      title: 'Data Migration & CSV Import',
-      sub: 'Import Marg/Vyapar/Tally product lists',
-      icon: 'cloud-upload-outline' as const,
+      title: 'Data Backup & Import',
+      sub: 'Backup, restore & import CSV from Tally/Marg/Vyapar',
+      icon: 'server-outline' as const,
       color: colors.palette.primary,
-      action: () => navigation.navigate('DataImport'),
+      action: () => navigation.navigate('DataManagement'),
     },
     {
       title: 'Desktop Portal Sync',
@@ -76,13 +76,6 @@ export const MoreHubScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
       icon: 'sync-outline' as const,
       color: colors.palette.success,
       action: () => navigation.navigate('DesktopSync'),
-    },
-    {
-      title: 'Database Backup & Restore',
-      sub: 'Offline JSON backup, restore & data wipe',
-      icon: 'shield-checkmark-outline' as const,
-      color: colors.palette.accent,
-      action: () => navigation.navigate('BackupRestore'),
     },
     {
       title: 'Feature Config & Toggles',

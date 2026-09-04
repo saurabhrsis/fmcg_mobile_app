@@ -28,11 +28,15 @@ Welcome to the **FMCG Mobile ERP Suite** (React Native Expo 54 + SQLite). This m
 ### 1.1 Initial Launch
 The app ships with **no demo data and no default accounts** — you start with a clean database.
 
-- **Register**: On first launch the app opens the **Register** screen. Create your admin
-  account (name, username, password, security question) and your **business/firm profile**
-  (trade name, GSTIN, phone, address, state) in one step. You are signed in automatically.
-- **Login**: Once an account exists, the app opens the **Login** screen. Use
+- **Login**: The app always opens on the **Login** page. First-time users tap
+  **New user? Create Your Account**; returning users sign straight in. Use
   **Forgot Password?** to reset via your security question.
+- **Register**: create your admin account (name, username, password, security question) and choose
+  how to set up your firm:
+  - **Enter business details** — type the trade name, GSTIN, phone, address and state yourself, or
+  - **I already use RightServe Desktop** — skip the business form entirely. After signing in the
+    app opens **Desktop Sync**: scan the pairing QR on the PC and tap **Full Sync** to copy the
+    firm, items, parties and bills automatically.
 - **Free Trial**: Every fresh install includes a **7-day free trial** with all features
   unlocked. A status strip at the top of the app shows the days remaining.
 
@@ -173,9 +177,11 @@ For consumer electronics, high-value appliances, and tracked goods:
      buyers. No tax is charged: line GST rates drop to 0%, the summary shows *“GST: Not
      applicable”*, and the printout becomes a **BILL OF SUPPLY** without tax columns, with a
      declaration that no GST has been charged.
-4. Pick the **GST Tax Type / Supply Type**:
-   - GST bill → `Auto (CGST+SGST or IGST)`, `CGST + SGST` (intra-state), `IGST` (inter-state /
-     SEZ), or `Nil / Exempt`.
+4. Pick the **GST Tax Type / Supply Type** — this is **selected automatically** from your firm's
+   state and the customer's state (same state → CGST + SGST, different state → IGST), and re-picks
+   itself whenever you change the customer:
+   - GST bill → `CGST + SGST` (intra-state), `IGST` (inter-state / SEZ) or `Nil / Exempt`.
+     Override manually only for special cases such as SEZ units.
    - Non-GST bill → `Intra-state`, `Inter-state` or `Nil / Exempt`. This only records how the
      supply is classified for your registers; the bill still carries no tax.
 5. Tap **+ Add Item**:
@@ -262,17 +268,19 @@ Navigate to **Hub & More** ➔ **Reports Center**:
 
 ---
 
-## 13. Backup, Restore & Data Migration
+## 13. Data Backup & Import
 
-### 13.1 Backup & Restore
-- **Export Backup**: Navigate to **Hub & More** ➔ **Backup & Restore** ➔ **Export JSON Backup** to save a snapshot.
+Both data-safety tools live in **one screen: Hub & More ➔ Data Backup & Import**, with two tabs.
+
+### 13.1 Backup & Restore tab
+- **Export Backup**: Tap **Generate & Share Backup** to save a portable JSON snapshot.
 - **Restore Backup**: Pick any JSON snapshot to restore data.
-- **Wipe All Data**: Clear sample data with master admin password confirmation.
+- **Wipe All Data**: Clear all transaction & master data with master admin password confirmation.
 
-### 13.2 CSV Data Import
-- Navigate to **Hub & More** ➔ **Import Data (CSV)**.
+### 13.2 CSV Import tab
 - Download sample templates for Items or Parties.
-- Upload your CSV to bulk import products and customer catalogs.
+- Upload your CSV (from Marg, Vyapar, Tally or Excel) or paste it directly, check the
+  auto-mapped preview and confirm to bulk import products and customer catalogs.
 
 ---
 

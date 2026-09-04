@@ -4,6 +4,49 @@ All notable changes and architectural transitions in the **FMCG Mobile ERP Suite
 
 ---
 
+## [Version 1.2.0] — Simpler, Friendlier Mobile UX
+
+### 🧾 Billing — GST tax type without "Auto"
+- **Changed**: The confusing `Auto (…)` chip is gone. The correct GST type — **CGST + SGST** or
+  **IGST** — is now picked automatically from the firm's state vs. the customer / place-of-supply
+  state, and the matching chip shows as selected. Re-selecting a customer re-evaluates the type.
+  Users can still override for special cases (SEZ / MIHAN) or pick **Nil / Exempt**.
+- **Changed**: Vouchers now store the resolved concrete `gst_type` (`intra` / `inter` / `nil`)
+  instead of persisting `auto`.
+
+### 👤 First-run & registration
+- **Changed**: A fresh install now opens the **Login** page (with a prominent
+  *Create Your Account* button for first-time users) instead of dropping new users into the
+  long Register form.
+- **Added**: Registration offers *"I already use RightServe Desktop"* — business details are
+  skipped, and after sign-in the app opens **Desktop Sync** so scanning the desktop pairing QR
+  (or importing a sync file) copies the firm, items, parties and bills with zero typing.
+- **Changed**: `mergeSyncPackage()` marks the first business pulled from the desktop as the
+  active (default) firm when the phone has no businesses yet, so desktop converts land on a
+  working app immediately.
+
+### 💳 Buying & activation
+- **Added**: The **Buy / Activate** screen (reached from the trial banner's *Buy License*) now
+  shows sales & support contact details up front — phone numbers, WhatsApp and the support email.
+- **Added**: After a key activates, the app offers **Copy from Desktop** in one tap for desktop
+  licence holders who just added a mobile licence.
+- **Changed**: Removed the lengthy "Mobile key ≠ Desktop key" explanation in favour of one short
+  card.
+
+### 🆘 Help & Support
+- **Changed**: Removed the "RightServe FMCG Mobile Edition / Version / Developed by …" box and all
+  technology names. The screen is now a clean support hub — Call / WhatsApp / Email plus tappable
+  quick-help topics (license, desktop copy, backup, CSV import, GST).
+
+### 🗂 Settings
+- **Changed**: Merged **Data Migration & CSV Import** and **Database Backup & Restore** into one
+  **Data Backup & Import** screen with two tabs (`BackupRestoreScreen` + `DataImportScreen` →
+  `DataManagementScreen`), cutting the More hub from 13 to 12 tiles.
+- **Added**: Shared `src/constants/support.ts` so contact details stay consistent across the
+  activation, support and buy flows.
+
+---
+
 ## [Version 1.1.0] - Non-GST Bills, Walk-in Customers & Desktop QR Pairing
 
 ### 🧾 Billing — Non-GST Bills (Bill of Supply)

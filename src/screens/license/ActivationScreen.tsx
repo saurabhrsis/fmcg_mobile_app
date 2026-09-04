@@ -10,19 +10,41 @@ import {
   ActivityIndicator,
   Share,
   Platform,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
 import { useTheme } from '../../context/ThemeContext';
 import { useLicense } from '../../context/LicenseContext';
+import { useBusiness } from '../../context/BusinessContext';
 import { TRIAL_DAYS } from '../../licensing/license';
+import { SUPPORT } from '../../constants/support';
 
 export const ActivationScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { colors } = useTheme();
   const { status, deviceId, activateKey } = useLicense();
+  const { businesses } = useBusiness();
 
   const [key, setKey] = useState('');
   const [busy, setBusy] = useState(false);
+
+  /** After a key is activated, desktop owners can copy all their PC data in one go. */
+  const offerDesktopCopy = () => {
+    const freshPhone = businesses.length === 0;
+    Alert.alert(
+      'License Activated',
+      freshPhone
+        ? 'Your license is active. Do you use the RightServe Desktop app on your PC? Copy your firm, items, parties and bills straight from it — no need to type anything.'
+        : 'Your license is active. You can also copy the latest data from your RightServe Desktop app at any time.',
+      [
+        { text: 'Not now', style: 'cancel', onPress: () => navigation.goBack() },
+        {
+          text: 'Copy from Desktop',
+          onPress: () => navigation.replace('DesktopSync', { welcome: freshPhone }),
+        },
+      ]
+    );
+  };
 
   const handleActivate = async () => {
     if (!key.trim()) {
@@ -33,9 +55,7 @@ export const ActivationScreen: React.FC<{ navigation: any }> = ({ navigation }) 
     try {
       const res = await activateKey(key);
       if (res.ok) {
-        Alert.alert('Activated', 'Your license is active. Thank you!', [
-          { text: 'Continue', onPress: () => navigation.goBack() },
-        ]);
+        offerDesktopCopy();
       } else {
         Alert.alert('Activation Failed', res.reason || 'The key could not be verified.');
       }
@@ -53,19 +73,22 @@ export const ActivationScreen: React.FC<{ navigation: any }> = ({ navigation }) 
   };
 
   const trialEnded = status?.state === 'trial-expired';
+  const buying = status?.trial || trialEnded;
 
   return (
-    <ScreenWrapper title="Activate License" subtitle="Unlock full billing access">
+    <ScreenWrapper title="Buy / Activate License" subtitle="Unlock full billing access">
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View style={[styles.iconCircle, { backgroundColor: colors.palette.primary }]}>
             <Ionicons name="key" size={34} color="#FFF" />
           </View>
-          <Text style={[styles.title, { color: colors.text }]}>Activate Your License</Text>
+          <Text style={[styles.title, { color: colors.text }]}>
+            {buying ? 'Buy or Activate Your License' : 'Activate Your License'}
+          </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             {trialEnded
               ? `Your ${TRIAL_DAYS}-day free trial has ended. Enter your Mobile license key to continue creating invoices.`
-              : 'Paste the Mobile license key issued to your business to unlock full access on this phone.'}
+              : 'Already have a key? Paste it below. Want to buy? Call or message us — we activate in minutes.'}
           </Text>
         </View>
 
@@ -76,6 +99,54 @@ export const ActivationScreen: React.FC<{ navigation: any }> = ({ navigation }) 
           </View>
         )}
 
+        {/* ---- Contact sales: call, WhatsApp, email ---- */}
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.cardTitle, { color: colors.palette.primary }]}>Buy / Renew — Talk to Us</Text>
+          <Text style={[styles.hint, { color: colors.textSecondary, marginBottom: 10 }]}>
+            Share your business name with our team and we'll issue your Mobile license key right away.
+          </Text>
+
+          <TouchableOpacity
+            style={[styles.contactBtn, { backgroundColor: colors.palette.primary }]}
+            onPress={() => Linking.openURL(`tel:${SUPPORT.phones[0].tel}`)}
+          >
+            <Ionicons name="call-outline" size={19} color="#FFF" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.contactTitle}>Call Sales & Support</Text>
+              <Text style={styles.contactSub}>{SUPPORT.phones.map((p) => p.label).join('  •  ')}</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.contactBtn, { backgroundColor: '#16A34A' }]}
+            onPress={() =>
+              Linking.openURL(
+                `https://wa.me/${SUPPORT.whatsapp}?text=${encodeURIComponent(
+                  'Hi, I want to buy the FMCG Mobile app license. My Device ID: ' + deviceId
+                )}`
+              )
+            }
+          >
+            <Ionicons name="logo-whatsapp" size={19} color="#FFF" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.contactTitle}>WhatsApp Us</Text>
+              <Text style={styles.contactSub}>{SUPPORT.phones[0].label} — fastest reply</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.contactBtn, { borderColor: colors.border, borderWidth: 1 }]}
+            onPress={() => Linking.openURL(`mailto:${SUPPORT.email}?subject=FMCG%20Mobile%20License`)}
+          >
+            <Ionicons name="mail-outline" size={19} color={colors.palette.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.contactTitle, { color: colors.text }]}>Email Us</Text>
+              <Text style={[styles.contactSub, { color: colors.textMuted }]}>{SUPPORT.email}</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* ---- Key entry ---- */}
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.label, { color: colors.textSecondary }]}>License Key</Text>
           <TextInput
@@ -112,7 +183,7 @@ export const ActivationScreen: React.FC<{ navigation: any }> = ({ navigation }) 
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.cardTitle, { color: colors.palette.primary }]}>Your Device ID</Text>
           <Text style={[styles.hint, { color: colors.textSecondary }]}>
-            Share this with RightServe when requesting a device-locked key.
+            Share this with us when buying a device-locked key.
           </Text>
           <View style={[styles.deviceRow, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}>
             <Text style={[styles.deviceId, { color: colors.text }]} selectable>
@@ -125,28 +196,13 @@ export const ActivationScreen: React.FC<{ navigation: any }> = ({ navigation }) 
         </View>
 
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.cardTitle, { color: colors.palette.primary }]}>How to get a key</Text>
-          <Text style={[styles.hint, { color: colors.textSecondary }]}>
-            1. Contact RightServe sales with your business name and Device ID.{'\n'}
-            2. They generate a signed key from the RightServe licensing portal — the same portal
-            used for the desktop software.{'\n'}
-            3. Paste the key above. Internet is needed only once, at activation; afterwards the app
-            works fully offline.
-          </Text>
-        </View>
-
-        {/* Desktop and mobile are separate products — one key unlocks one device */}
-        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.cardTitle, { color: colors.palette.primary }]}>
-            Mobile key ≠ Desktop key
+            Already have the Desktop app?
           </Text>
           <Text style={[styles.hint, { color: colors.textSecondary }]}>
-            A licence activates ONE device, so the phone and the PC need their own keys. Ask
-            RightServe for the <Text style={{ fontWeight: '700' }}>Mobile app</Text> product (or
-            “Desktop + Mobile”, which issues two keys for the same client).{'\n'}
-            A desktop key pasted here is rejected with the message “This key is for the RightServe
-            desktop app”, and the desktop app rejects a mobile key the same way. Renew each product
-            separately.
+            Desktop and mobile are licensed separately. After activating your{' '}
+            <Text style={{ fontWeight: '700' }}>Mobile</Text> key here, you can copy your firm, items,
+            parties and bills from the PC in one tap — Desktop Sync will be offered automatically.
           </Text>
         </View>
 
@@ -201,6 +257,17 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: { color: '#FFF', fontWeight: '700', fontSize: 15 },
   hint: { fontSize: 12.5, lineHeight: 19 },
+  contactBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 8,
+  },
+  contactTitle: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+  contactSub: { color: 'rgba(255,255,255,0.9)', fontSize: 11.5, marginTop: 1 },
   deviceRow: {
     flexDirection: 'row',
     alignItems: 'center',

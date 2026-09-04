@@ -42,7 +42,7 @@ export const RootNavigator: React.FC = () => {
       }}
     >
       {!user ? (
-        <AuthNavigator initialRouteName={needsSetup ? 'Register' : 'Login'} />
+        <AuthNavigator initialRouteName="Login" firstRun={needsSetup} />
       ) : (
         <AppNavigator />
       )}

@@ -75,6 +75,7 @@ export const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
   const [secAnswer, setSecAnswer] = useState('');
 
   // Business
+  const [copyFromDesktop, setCopyFromDesktop] = useState(false);
   const [bizName, setBizName] = useState('');
   const [gstin, setGstin] = useState('');
   const [phone, setPhone] = useState('');
@@ -109,10 +110,12 @@ export const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
     if (!password || password.length < 4) return Alert.alert('Weak Password', 'Password must be at least 4 characters');
     if (password !== confirmPassword) return Alert.alert('Mismatch', 'Password and Confirm Password do not match');
     if (!secAnswer.trim()) return Alert.alert('Required', 'Please answer the security question (used for password recovery)');
-    if (!bizName.trim()) return Alert.alert('Required', 'Please enter your Business Name');
-    if (!state.trim()) return Alert.alert('Required', 'Please select your State (needed for GST calculations)');
-    if (gstin.trim() && !isValidGstinFormat(gstin)) {
-      return Alert.alert('Invalid GSTIN', 'The GSTIN format looks incorrect. It should be like 27AABCA1234F1Z5. Leave it blank if unregistered.');
+    if (!copyFromDesktop) {
+      if (!bizName.trim()) return Alert.alert('Required', 'Please enter your Business Name');
+      if (!state.trim()) return Alert.alert('Required', 'Please select your State (needed for GST calculations)');
+      if (gstin.trim() && !isValidGstinFormat(gstin)) {
+        return Alert.alert('Invalid GSTIN', 'The GSTIN format looks incorrect. It should be like 27AABCA1234F1Z5. Leave it blank if unregistered.');
+      }
     }
 
     setLoading(true);
@@ -126,34 +129,41 @@ export const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
         sec_answer: secAnswer,
       });
 
-      // 2. Create the business profile
-      const biz = await createBusiness({
-        name: bizName.trim(),
-        gstin: gstin.trim().toUpperCase(),
-        phone: phone.trim(),
-        email: email.trim(),
-        address: [address.trim(), city.trim()].filter(Boolean).join(', '),
-        state: state.trim(),
-        state_code: stateCd || toStateCode(state, gstin),
-        invoice_prefix: 'INV',
-        terms: 'Goods once sold will not be taken back.',
-        fy_start_month: 4,
-        is_default: 1,
-        active: 1,
-        bill_number_start: 1,
-        bill_format: 'classic',
-        bill_color: '#0f766e',
-        created_at: new Date().toISOString(),
-      } as any);
+      if (copyFromDesktop) {
+        // 2a. Desktop user — no typing. Land on Desktop Sync after sign-in;
+        //     scanning the desktop QR pulls the firm, items, parties & bills.
+        setPendingNav('DesktopSync', { welcome: true });
+      } else {
+        // 2b. Create the business profile
+        const biz = await createBusiness({
+          name: bizName.trim(),
+          gstin: gstin.trim().toUpperCase(),
+          phone: phone.trim(),
+          email: email.trim(),
+          address: [address.trim(), city.trim()].filter(Boolean).join(', '),
+          state: state.trim(),
+          state_code: stateCd || toStateCode(state, gstin),
+          invoice_prefix: 'INV',
+          terms: 'Goods once sold will not be taken back.',
+          fy_start_month: 4,
+          is_default: 1,
+          active: 1,
+          bill_number_start: 1,
+          bill_format: 'classic',
+          bill_color: '#0f766e',
+          created_at: new Date().toISOString(),
+        } as any);
+
+        // Auto-login and land on the Business Profile editor so the
+        // user can complete / update their business details.
+        if (biz?.id) {
+          setPendingNav('BusinessForm', { id: biz.id });
+        }
+      }
 
       await refreshBusinesses();
       await checkSetupStatus();
 
-      // 3. Auto-login and land on the Business Profile editor so the
-      //    user can complete / update their business details.
-      if (biz?.id) {
-        setPendingNav('BusinessForm', { id: biz.id });
-      }
       const res = await login(username.trim(), password);
       if (!res.success) {
         Alert.alert('Registered', 'Account created. Please sign in with your new credentials.', [
@@ -290,6 +300,68 @@ export const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
               <Text style={[styles.sectionTitle, { color: colors.palette.primary }]}>Your Business</Text>
             </View>
 
+            {/* How do you want to set up your firm? */}
+            <TouchableOpacity
+              style={[
+                styles.setupChoice,
+                {
+                  borderColor: !copyFromDesktop ? colors.palette.primary : colors.border,
+                  backgroundColor: !copyFromDesktop ? colors.palette.primaryLight || colors.surfaceSecondary : colors.surfaceSecondary,
+                },
+              ]}
+              activeOpacity={0.75}
+              onPress={() => setCopyFromDesktop(false)}
+            >
+              <Ionicons
+                name={!copyFromDesktop ? 'radio-button-on' : 'radio-button-off'}
+                size={20}
+                color={colors.palette.primary}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.choiceTitle, { color: colors.text }]}>Enter business details</Text>
+                <Text style={[styles.choiceSub, { color: colors.textMuted }]}>
+                  New business — I'll type the firm name, state & GSTIN
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.setupChoice,
+                {
+                  borderColor: copyFromDesktop ? colors.palette.primary : colors.border,
+                  backgroundColor: copyFromDesktop ? colors.palette.primaryLight || colors.surfaceSecondary : colors.surfaceSecondary,
+                },
+              ]}
+              activeOpacity={0.75}
+              onPress={() => setCopyFromDesktop(true)}
+            >
+              <Ionicons
+                name={copyFromDesktop ? 'radio-button-on' : 'radio-button-off'}
+                size={20}
+                color={colors.palette.primary}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.choiceTitle, { color: colors.text }]}>I already use RightServe Desktop</Text>
+                <Text style={[styles.choiceSub, { color: colors.textMuted }]}>
+                  Copy everything from my PC — no need to type the firm details
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            {copyFromDesktop ? (
+              <View style={[styles.desktopInfoBox, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}>
+                <Ionicons name="sync-outline" size={18} color={colors.palette.primary} />
+                <Text style={[styles.desktopInfoText, { color: colors.textSecondary }]}>
+                  After you register, this phone will open{' '}
+                  <Text style={{ fontWeight: '700' }}>Desktop Sync</Text>. Keep your PC nearby — scan
+                  the pairing QR shown in the desktop app (Settings → Mobile Sync) and tap{' '}
+                  <Text style={{ fontWeight: '700' }}>Full Sync</Text>. Your business profile, items,
+                  parties and bills are copied to this phone automatically.
+                </Text>
+              </View>
+            ) : (
+              <>
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: colors.textSecondary }]}>Business / Trade Name *</Text>
               <TextInput
@@ -382,6 +454,8 @@ export const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
               After registration you will be taken to the Business Profile screen where you can
               complete bank details, logo, signature and bill format.
             </Text>
+              </>
+            )}
           </View>
 
           <TouchableOpacity
@@ -456,6 +530,38 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 15,
     fontWeight: '700',
+  },
+  setupChoice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1.5,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 10,
+  },
+  choiceTitle: {
+    fontSize: 13.5,
+    fontWeight: '700',
+  },
+  choiceSub: {
+    fontSize: 11,
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  desktopInfoBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 2,
+  },
+  desktopInfoText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 17,
   },
   inputGroup: {
     marginBottom: 12,

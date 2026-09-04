@@ -7,9 +7,15 @@ A full-featured mobile counterpart to the FMCG Desktop ERP system, designed for 
 ## 🔐 Accounts & Licensing
 
 - **No demo data, no default accounts.** A fresh install starts with an empty database.
-- **Register**: create your admin user *and* your business/firm profile in one screen, then
-  you're signed in. **Login** for returning users, with security-question password recovery.
-- **7-day free trial** on every new install, all features unlocked.
+- **Login first**: the app always opens on the **Login** page. First-time users tap
+  **Create Your Account**; returning users sign straight in, with security-question password
+  recovery.
+- **Desktop users don't re-type anything**: at registration pick *"I already use RightServe
+  Desktop"* — business details are skipped and, after signing in, scanning the desktop pairing QR
+  copies the firm, items, parties and bills to the phone automatically.
+- **7-day free trial** on every new install, all features unlocked. The trial banner's
+  **Buy License** action shows our phone numbers, WhatsApp and support email so you can reach
+  sales instantly.
 - **Licence keys shared with the desktop product** — ed25519-signed `RSL1.…` keys minted by
   the same [RightServe licensing portal](https://github.com/nitesh1414/fmcg_software), verified
   **offline** on device. Supports perpetual keys, device-locked keys, expiry reminders and
@@ -45,9 +51,10 @@ See [docs/LICENSING.md](docs/LICENSING.md) for the full scheme.
   **Non-GST Bill (Bill of Supply)** for unregistered, composition or exempt-goods buyers. Non-GST
   bills carry no tax at all and print as *BILL OF SUPPLY* without GST columns, with a “no GST
   charged” declaration.
-- **Supply / Tax Type**: `Auto`, `Intra-state (CGST+SGST)`, `Inter-state (IGST)` or
-  `Nil / Exempt`. On a non-GST bill the same choice (`Intra` / `Inter` / `Nil`) only classifies the
-  supply for your registers.
+- **Supply / Tax Type**: `Intra-state (CGST+SGST)`, `Inter-state (IGST)` or
+  `Nil / Exempt` — the correct type is **picked automatically** from the party / place-of-supply
+  state and shown selected; override only for special cases (SEZ etc.). On a non-GST bill the same
+  choice (`Intra` / `Inter` / `Nil`) only classifies the supply for your registers.
 - **Walk-in Counter Billing**: bill a walking customer by adding **just a name** — phone, GSTIN and
   address can be updated later from the bill or the party list without losing the ledger link.
 - **3-Tier Discounts**: Trade Discount, Cash Discount (CD), and Special Discount (SD) in % or flat ₹ amounts.
@@ -85,8 +92,8 @@ See [docs/LICENSING.md](docs/LICENSING.md) for the full scheme.
 - Multi-user access control (Admin & Staff) with granular permissions.
 - F12 Global feature toggles (Batches, Serials, Multi-Unit, E-Way, POS quick billing, Round-off).
 - 8 Theme Palettes (Teal, Indigo, Emerald, Amber, Rose, Violet, Cyan, Slate) and Dark/Light Mode.
-- Complete Backup & Restore (JSON database snapshots).
-- CSV Data Migration for items and parties with sample template downloads.
+- **Data Backup & Import** — one screen for JSON backup / restore / wipe *and* CSV migration of
+  items and parties (with sample template downloads).
 - **Desktop Sync with QR pairing**: scan the QR shown by the desktop app (Settings → Mobile Sync,
   port `4000`) to save the LAN address *and* the required API key in one step, then tap **Full
   Sync**. Manual URL/key entry, an offline sync-file export/import, and `usesCleartextTraffic` for

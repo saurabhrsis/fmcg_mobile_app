@@ -194,6 +194,21 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
   const effectiveInter = noTax ? false : gstType === 'inter' ? true : gstType === 'intra' ? false : autoInter;
 
   /**
+   * The "Auto" option was removed from the UI — the correct GST type is
+   * picked automatically from the party / place of supply and the matching
+   * chip is shown as selected. `gstType` stays 'auto' internally until the
+   * user overrides it, so re-picking a customer re-evaluates the type.
+   */
+  const effectiveGstType: 'intra' | 'inter' | 'nil' =
+    gstType === 'auto' ? (autoInter ? 'inter' : 'intra') : gstType;
+
+  /** Re-run the automatic selection whenever the customer or supply place changes. */
+  useEffect(() => {
+    setGstType('auto');
+  }, [selectedParty?.id, selectedParty?.state, selectedParty?.gstin, placeOfSupply, consigneeState, consigneeGstin]);
+
+
+  /**
    * Switching to a non-GST bill (or a nil-rated supply) drops every line rate
    * to 0%; switching back to a taxable bill restores the rates from the item
    * master so the user never has to re-enter them.
@@ -338,7 +353,7 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
           notes,
           ...shipTo,
           place_of_supply: placeOfSupply,
-          gst_type: gstType,
+          gst_type: effectiveGstType,
           bill_type: billType,
           po_no: poNo,
           po_date: poDate,
@@ -646,7 +661,6 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
                   { key: 'nil', label: 'Nil / Exempt' },
                 ] as const)
               : ([
-                  { key: 'auto', label: `Auto (${autoInter ? 'IGST' : 'CGST+SGST'})` },
                   { key: 'intra', label: 'CGST + SGST' },
                   { key: 'inter', label: 'IGST' },
                   { key: 'nil', label: 'Nil / Exempt' },
@@ -657,15 +671,15 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
                 style={[
                   styles.gstTypeChip,
                   {
-                    backgroundColor: gstType === opt.key ? colors.palette.primary : colors.surfaceSubtle,
-                    borderColor: gstType === opt.key ? colors.palette.primary : colors.border,
+                    backgroundColor: effectiveGstType === opt.key ? colors.palette.primary : colors.surfaceSubtle,
+                    borderColor: effectiveGstType === opt.key ? colors.palette.primary : colors.border,
                   },
                 ]}
-                onPress={() => setGstType(opt.key as GstType)}
+                onPress={() => setGstType(opt.key)}
               >
                 <Text
                   style={{
-                    color: gstType === opt.key ? '#ffffff' : colors.text,
+                    color: effectiveGstType === opt.key ? '#ffffff' : colors.text,
                     fontSize: 12,
                     fontWeight: '700',
                   }}
@@ -678,7 +692,7 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
           <Text style={{ fontSize: 10.5, color: colors.textMuted, marginTop: 6 }}>
             {noTax
               ? 'No tax is charged on this bill — line GST rates are set to 0% and the supply type is recorded for your registers only.'
-              : 'Auto compares customer & company GST states. SEZ / MIHAN units charge IGST even within the same state — select IGST to override. Pick Nil / Exempt for nil-rated goods.'}
+              : `Selected automatically from your & customer's GST state (${autoInter ? 'different states → IGST' : 'same state → CGST + SGST'}). Change it only for SEZ / special cases.`}
           </Text>
         </Card>
 
@@ -753,7 +767,7 @@ export const CreateInvoiceScreen: React.FC<{ navigation: any; route: any }> = ({
           ) : effectiveInter ? (
             <View style={styles.summaryRow}>
               <Text style={{ color: colors.textMuted }}>
-                IGST{gstType === 'inter' ? ' (forced — SEZ/inter-state)' : ''}:
+                IGST{gstType === 'inter' ? ' (manually selected)' : ''}:
               </Text>
               <Text style={{ fontWeight: '600', color: colors.text }}>{formatCurrency(taxTotal)}</Text>
             </View>
