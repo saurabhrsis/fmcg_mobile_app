@@ -266,6 +266,10 @@ export const syncService = {
       const invMap = new Map<number, number>();
 
       // -- businesses (match by name) --
+      // A brand-new phone that registered with "copy from desktop" has no firm
+      // yet — the first business pulled from the PC becomes the active firm.
+      const hasLocalBiz = await db.getFirstAsync<any>('SELECT id FROM businesses LIMIT 1');
+      let madeDefault = !!hasLocalBiz;
       for (const row of d.businesses || []) {
         const found = await db.getFirstAsync<any>(
           'SELECT id FROM businesses WHERE LOWER(name) = ?',
@@ -275,7 +279,10 @@ export const syncService = {
           bizMap.set(Number(row.id), Number(found.id));
           bump('matched', 'businesses');
         } else {
-          const newId = await insertRow(db, 'businesses', row, { is_default: 0 });
+          const newId = await insertRow(db, 'businesses', row, {
+            is_default: madeDefault ? 0 : 1,
+          });
+          madeDefault = true;
           bizMap.set(Number(row.id), newId);
           bump('added', 'businesses');
         }

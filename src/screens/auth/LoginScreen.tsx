@@ -21,10 +21,12 @@ const APP_NAME = 'RightServe FMCG Mobile';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const APP_LOGO = require('../../../assets/icon.png');
 
-export const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+export const LoginScreen: React.FC<{ navigation: any; route: any }> = ({ navigation, route }) => {
   const { login } = useAuth();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  /** Fresh install — highlight the create-account CTA for first-time users. */
+  const firstRun = !!route?.params?.firstRun;
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -164,15 +166,27 @@ export const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
-          {/* Minimal register link (keeps navigation, no promo content) */}
-          <TouchableOpacity
-            style={styles.registerLink}
-            onPress={() => navigation.navigate('Register')}
-          >
-            <Text style={[styles.registerLinkText, { color: colors.textSecondary }]}>
-              New user? <Text style={{ color: colors.palette.primary, fontWeight: '700' }}>Register</Text>
-            </Text>
-          </TouchableOpacity>
+          {/* Register entry — a prominent button on first install, a quiet link afterwards */}
+          {firstRun ? (
+            <TouchableOpacity
+              style={[styles.registerCta, { borderColor: colors.palette.primary }]}
+              onPress={() => navigation.navigate('Register')}
+            >
+              <Ionicons name="person-add-outline" size={18} color={colors.palette.primary} />
+              <Text style={[styles.registerCtaText, { color: colors.palette.primary }]}>
+                New user? Create Your Account
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.registerLink}
+              onPress={() => navigation.navigate('Register')}
+            >
+              <Text style={[styles.registerLinkText, { color: colors.textSecondary }]}>
+                New user? <Text style={{ color: colors.palette.primary, fontWeight: '700' }}>Register</Text>
+              </Text>
+            </TouchableOpacity>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -273,5 +287,19 @@ const styles = StyleSheet.create({
   },
   registerLinkText: {
     fontSize: 14,
+  },
+  registerCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1.5,
+    borderRadius: 10,
+    paddingVertical: 13,
+    marginTop: 20,
+  },
+  registerCtaText: {
+    fontSize: 14.5,
+    fontWeight: '700',
   },
 });

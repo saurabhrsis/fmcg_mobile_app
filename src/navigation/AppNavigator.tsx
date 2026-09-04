@@ -51,8 +51,7 @@ import { UserFormScreen } from '../screens/users/UserFormScreen';
 // Settings
 import { FeaturesConfigScreen } from '../screens/settings/FeaturesConfigScreen';
 import { ThemeSettingsScreen } from '../screens/settings/ThemeSettingsScreen';
-import { BackupRestoreScreen } from '../screens/settings/BackupRestoreScreen';
-import { DataImportScreen } from '../screens/settings/DataImportScreen';
+import { DataManagementScreen } from '../screens/settings/DataManagementScreen';
 import { WhatsAppSettingsScreen } from '../screens/settings/WhatsAppSettingsScreen';
 import { DesktopSyncScreen } from '../screens/settings/DesktopSyncScreen';
 import { ScanDesktopQrScreen } from '../screens/settings/ScanDesktopQrScreen';
@@ -118,10 +117,9 @@ export const AppNavigator: React.FC = () => {
       {/* Settings */}
       <Stack.Screen name="FeaturesConfig" component={FeaturesConfigScreen} />
       <Stack.Screen name="ThemeSettings" component={ThemeSettingsScreen} />
-      <Stack.Screen name="BackupRestore" component={BackupRestoreScreen} />
+      <Stack.Screen name="DataManagement" component={DataManagementScreen} />
       <Stack.Screen name="DesktopSync" component={DesktopSyncScreen} />
       <Stack.Screen name="ScanDesktopQr" component={ScanDesktopQrScreen} />
-      <Stack.Screen name="DataImport" component={DataImportScreen} />
       <Stack.Screen name="WhatsAppSettings" component={WhatsAppSettingsScreen} />
       <Stack.Screen name="Support" component={SupportScreen} />
 
